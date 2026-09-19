@@ -2,7 +2,7 @@
    CONFIG
 ===================================================== */
 const WHATSAPP_NUMBER = '6285133352577'; // 085133352577
-const SITE_NAME = 'Oliv Propolis';
+const SITE_NAME = 'GLOWNESS SHOP';
 
 /* =====================================================
    MIDTRANS CONFIG
@@ -109,7 +109,7 @@ const SEED_SETTINGS = {
   ],
 };
 const SEED_NOTIFICATIONS = [
-  {id:'n1', title:'Selamat Datang Seller Oliv Propolis! 🎉', message:'Terima kasih sudah bergabung. Yuk mulai bagikan link referralmu dan pantau komisimu di dashboard.', date:'2026-08-15', from:'Tim Oliv Propolis'},
+  {id:'n1', title:'Selamat Datang Seller GLOWNESS SHOP! 🎉', message:'Terima kasih sudah bergabung. Yuk mulai bagikan link referralmu dan pantau komisimu di dashboard.', date:'2026-08-15', from:'Tim Oliv Propolis'},
 ];
 const SEED_ANNOUNCEMENT = {active:true, title:'Promo Ongkir Spesial!', message:'Gratis ongkir se-Indonesia untuk pembelian minimal Rp150.000 sepanjang bulan ini.', date:'2026-09-01'};
 
@@ -129,7 +129,7 @@ let state = {
   theme: localStorage.getItem('oliv_theme') || 'dark',
   mobileMenuOpen:false,
   dashMenuOpen:false,
-  aiOpen:false, aiMessages:[{role:'bot', text:'Halo! 👋 Saya asisten Oliv Propolis. Ada yang bisa saya bantu soal produk, pengiriman, cara jadi seller, atau pesananmu?'}],
+  aiOpen:false, aiMessages:[{role:'bot', text:'Halo! 👋 Saya asisten GLOWNESS SHOP. Ada yang bisa saya bantu soal produk, pengiriman, cara jadi seller, atau pesananmu?'}],
 };
 function toggleTheme(){
   state.theme = state.theme==='light' ? 'dark' : 'light';
@@ -357,7 +357,7 @@ function Hero(){
     <div class="wrap hero-grid">
       <div>
         <div class="kicker"></div>
-        <h1>Kekuatan alami propolis, <span class="gold">untuk tubuh yang lebih tangguh.</span></h1>
+        <h1>GLOWNESS SHOP, <span class="gold">untuk tubuh yang lebih tangguh.</span></h1>
         <p>${SITE_NAME} diproses higienis dari propolis mentah pilihan untuk mendukung daya tahan tubuh dan menjaga kesehatan setiap hari.</p>
         <div class="hero-actions">
           <button class="btn btn-primary" onclick="location.hash='#/produk'">Lihat Semua Produk</button>
