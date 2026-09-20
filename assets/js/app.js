@@ -1618,7 +1618,6 @@ function pageStaffKeuangan(){
   <div class="stat-grid">
     <div class="stat-card"><div class="lbl">Omset Kotor (Selesai)</div><div class="val">${fmtRp(grossSales)}</div></div>
     <div class="stat-card"><div class="lbl">Modal Barang Terjual</div><div class="val">${fmtRp(modalTerjual)}</div></div>
-    <div class="stat-card"><div class="lbl">Komisi Mitra Terbayar</div><div class="val">${fmtRp(komisiTerbayar)}</div><div class="sub">Pending: ${fmtRp(komisiPending)}</div></div>
     <div class="stat-card"><div class="lbl">Laba Bersih Perusahaan</div><div class="val" style="color:var(--leaf)">${fmtRp(labaBersih)}</div><div class="sub">Laba kotor ${fmtRp(labaKotor)}</div></div>
   </div>
   <div class="stat-grid">
