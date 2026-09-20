@@ -998,7 +998,6 @@ function pageSeller(){
         <a class="btn btn-soft btn-sm" href="#/seller/referral">🔗 Referral & Matrix</a></div>
       <div class="stat-grid">
         <div class="stat-card"><div class="lbl">Komisi Cair</div><div class="val">${fmtRp(doneComm)}</div></div>
-        <div class="stat-card"><div class="lbl">Komisi Pending</div><div class="val">${fmtRp(pendComm)}</div></div>
         <div class="stat-card"><div class="lbl">Total Order</div><div class="val">${myOrders.length}</div></div>
         <div class="stat-card"><div class="lbl">Sudah Ditarik</div><div class="val">${fmtRp(withdrawn)}</div><div class="sub">Peringkat #${myRank||'-'} dari ${leaderboard.length} mitra</div></div>
       </div>
