@@ -616,7 +616,7 @@ function CheckoutModal(){
         </div>
         <button class="btn btn-primary btn-block" type="submit">Buat Pesanan & Lihat Cara Bayar</button>
         ${midtransOn?`<button id="midtrans-pay-btn" type="button" class="btn btn-ghost btn-block" style="margin-top:10px;" onclick="payWithMidtrans()">💳 Bayar Otomatis (Midtrans)</button>`:''}
-        <div class="field-hint" style="text-align:center;margin-top:10px;">Setelah pesanan dibuat, transfer sesuai metode yang dipilih lalu kirim bukti bayar via WhatsApp.</div>
+        <div class="field-hint" style="text-align:center;margin-top:10px;"></div>
       </form>
     </div>
   </div>`;
@@ -689,8 +689,7 @@ function PaymentInfoModal(){
         <div style="font-size:24px;font-weight:700;">${fmtRp(o.total)}</div>
       </div>
       ${pm ? `<div style="font-weight:600;margin-bottom:8px;">Bayar via ${esc(pm.name)}</div>${paymentDetailHtml(pm)}` : `<div class="field-hint">Admin akan mengirim info pembayaran lewat WhatsApp.</div>`}
-      <div class="field-hint" style="margin:14px 0;">Setelah membayar, kirim bukti pembayaran lewat WhatsApp agar pesananmu segera diproses.</div>
-      <button class="btn btn-wa btn-block" onclick="confirmPaymentWa('${o.id}')">🟢 Konfirmasi Pembayaran via WhatsApp</button>
+      <div class="field-hint" style="margin:14px 0;">Pesananmu akan segera diproses.</div>
     </div>
   </div>`;
 }
