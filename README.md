@@ -42,6 +42,13 @@ Dashboard Seller → **Referral & Matrix**: kode, link, tombol bagikan WhatsApp,
 - Lebar & kedalaman matrix diatur admin di **Pengaturan → Struktur Matrix** (default 3 × 5).
 - Jika posisi sponsor penuh, seller baru otomatis ditempatkan di jaringan sponsor (spillover).
 
+## Komisi Pending & Saldo Manual
+
+- Komisi dari order referral (selain yang **Dibatalkan**) otomatis tercatat sebagai **Komisi Pending** di dashboard mitra. Komisi pending **tidak** langsung jadi saldo.
+- **Saldo** mitra hanya bertambah saat admin mengisinya manual: Portal Admin → **Mitra** → **+ Isi Saldo** (jumlah + catatan opsional). Angka negatif dipakai untuk koreksi/pengurangan saldo.
+- Komisi Pending berkurang sebesar total saldo yang sudah diisi admin. Saldo Bisa Ditarik = total saldo diisi admin − penarikan (Menunggu/Disetujui).
+- Pengajuan penarikan ditolak otomatis jika melebihi saldo. Semua pengisian tercatat di **Riwayat Pengisian Saldo** (admin & mitra), disimpan di key Supabase `oliv_balance_logs`.
+
 ## Catatan konfigurasi
 
 - Pengaturan Supabase, Midtrans, dan endpoint fungsi ada di `assets/js/app.js`. Tombol Midtrans hanya muncul jika `MIDTRANS_CLIENT_KEY` sudah diisi.
