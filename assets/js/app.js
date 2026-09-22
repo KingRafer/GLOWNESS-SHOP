@@ -124,10 +124,47 @@ let state = {
 };
 function brandMark(size){
   const s = size || 38;
-  return `<div class="brand-mark" style="width:${s}px;height:${s}px;"><img src="assets/img/logo.webp" alt="GLOWNESS" onerror="this.onerror=null;this.src='assets/img/logo-sm.png'"></div>`;
+  return `<div class="brand-mark" style="width:${s}px;height:${s}px;"><img src="assets/img/logo.webp" alt="GLOWNESS" width="${s}" height="${s}" onerror="this.onerror=null;this.src='assets/img/logo-sm.png'"></div>`;
 }
 function themeToggleBtn(){
-  return `<button class="theme-toggle" onclick="toggleTheme()" aria-label="Ganti tema">${state.theme==='light'?'🌙':'☀️'}</button>`;
+  return `<button class="theme-toggle" onclick="toggleTheme()" aria-label="Ganti tema">${state.theme==='light'?ic('moon'):ic('sun')}</button>`;
+}
+/* Lightweight SVG icons (no emoji stickers) */
+function ic(name, size){
+  const s = size || 18;
+  const icons = {
+    cart: `<path d="M6 6h15l-1.5 9h-12z"/><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M6 6L5 3H2"/>`,
+    bag: `<path d="M6 7h12l1 13H5L6 7z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/>`,
+    chat: `<path d="M21 12a8 8 0 0 1-8 8H7l-4 3V12a8 8 0 1 1 18 0z"/>`,
+    user: `<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/>`,
+    home: `<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>`,
+    search: `<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>`,
+    sun: `<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>`,
+    moon: `<path d="M21 14.5A8.5 8.5 0 1 1 9.5 3 7 7 0 0 0 21 14.5z"/>`,
+    menu: `<path d="M4 7h16M4 12h16M4 17h16"/>`,
+    close: `<path d="M6 6l12 12M18 6L6 18"/>`,
+    check: `<path d="M5 13l4 4L19 7"/>`,
+    package: `<path d="M12 2l9 5v10l-9 5-9-5V7l9-5z"/><path d="M12 12l9-5M12 12v10M12 12L3 7"/>`,
+    tag: `<path d="M20 12l-8 8-9-9V3h8l9 9z"/><circle cx="7.5" cy="7.5" r="1.5"/>`,
+    star: `<path d="M12 2l3 7h7l-5.5 4.5L19 21l-7-4.5L5 21l2.5-7.5L2 9h7z"/>`,
+    shield: `<path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/>`,
+    truck: `<path d="M1 7h13v10H1zM14 10h4l3 3v4h-7V10z"/><circle cx="5.5" cy="18.5" r="1.5"/><circle cx="17.5" cy="18.5" r="1.5"/>`,
+    map: `<path d="M12 21s7-6 7-11a7 7 0 1 0-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>`,
+    lock: `<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>`,
+    bell: `<path d="M6 16h12l-1-2V10a5 5 0 0 0-10 0v4l-1 2z"/><path d="M10 19a2 2 0 0 0 4 0"/>`,
+    wallet: `<rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 10h20"/><circle cx="16" cy="14" r="1.5"/>`,
+    link: `<path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/>`,
+    chart: `<path d="M4 19V5M4 19h16"/><path d="M8 16v-5M12 16V8M16 16v-3"/>`,
+    logout: `<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/>`,
+    send: `<path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/>`,
+    image: `<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>`,
+    trash: `<path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/>`,
+    edit: `<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>`,
+    plus: `<path d="M12 5v14M5 12h14"/>`,
+    store: `<path d="M3 9l1-5h16l1 5"/><path d="M3 9h18v11H3z"/><path d="M9 20v-6h6v6"/>`,
+  };
+  const d = icons[name] || icons.package;
+  return `<svg class="ic-svg" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 }
 function toggleTheme(){
   state.theme = state.theme==='light' ? 'dark' : 'light';
@@ -567,7 +604,7 @@ function Nav(){
         <a class="logout" onclick="doLogout()">Keluar</a>
       </div>`;
   }
-  const burger = `<button class="burger-btn" onclick="toggleMobileMenu()" aria-label="Menu">${state.mobileMenuOpen?'✕':'☰'}</button>`;
+  const burger = `<button class="burger-btn" onclick="toggleMobileMenu()" aria-label="Menu">${state.mobileMenuOpen?ic('close',18):ic('menu',18)}</button>`;
   return `
   <div class="cnav">
     <div class="wrap cnav-inner">
@@ -589,7 +626,7 @@ function Nav(){
       </div>
       <div class="nav-right">
         ${themeToggleBtn()}
-        <button class="cart-pill" onclick="openCart()">🧺 <span class="cart-count">${state.cart.reduce((a,c)=>a+c.qty,0)}</span></button>
+        <button class="cart-pill" onclick="openCart()">${ic('cart',16)} <span class="cart-count">${state.cart.reduce((a,c)=>a+c.qty,0)}</span></button>
         ${right}
         ${burger}
       </div>
@@ -634,9 +671,9 @@ function Why(){
       <p>Kami menghadirkan pengalaman belanja online yang mudah, cepat, dan aman untuk kebutuhanmu.</p>
     </div>
     <div class="why-row">
-      <div class="why-card"><div class="em">🛍️</div><h4>Produk Pilihan Berkualitas</h4><p>Setiap produk dikurasi agar sesuai kebutuhan dan sepadan dengan harga yang kamu bayar.</p></div>
-      <div class="why-card"><div class="em">🔒</div><h4>Checkout Aman & Cepat</h4><p>Berbagai metode pembayaran, proses pesanan yang jelas, dan konfirmasi langsung lewat WhatsApp.</p></div>
-      <div class="why-card"><div class="em">💬</div><h4>Siap Membantu</h4><p>Ada pertanyaan? Tim kami siap membantu lewat WhatsApp kapan saja kamu butuh.</p></div>
+      <div class="why-card"><div class="em">${ic('bag',28)}</div><h4>Produk Pilihan Berkualitas</h4><p>Setiap produk dikurasi agar sesuai kebutuhan dan sepadan dengan harga yang kamu bayar.</p></div>
+      <div class="why-card"><div class="em">${ic('shield',28)}</div><h4>Checkout Aman & Cepat</h4><p>Berbagai metode pembayaran, proses pesanan yang jelas, dan konfirmasi langsung lewat WhatsApp.</p></div>
+      <div class="why-card"><div class="em">${ic('chat',28)}</div><h4>Siap Membantu</h4><p>Ada pertanyaan? Tim kami siap membantu lewat chat admin atau WhatsApp kapan saja kamu butuh.</p></div>
     </div>
   </div>`;
 }
@@ -657,13 +694,16 @@ function ProductGrid(limit, query){
     ${list.map(p=>`
       <div class="prod-card" onclick="openProduct('${p.id}')">
         <div class="prod-thumb-wrap">
-          ${p.image?`<img class="prod-img-flat" src="${p.image}" alt="${p.name}">`:`<div class="prod-hex">${p.icon}</div>`}
+          ${p.image?`<img class="prod-img-flat" src="${p.image}" alt="${p.name}">`:`<div class="prod-hex">${ic('package',28)}</div>`}
           <span class="prod-badge">Tersedia</span>
         </div>
         <h3>${p.name}</h3>
         <p>${p.desc}</p>
         <div class="prod-price">${fmtRp(p.price)}<small>${p.tag}</small></div>
-        <button class="btn btn-ghost btn-sm btn-block" onclick="event.stopPropagation();openProduct('${p.id}')">Lihat Detail</button>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <button class="btn btn-primary btn-sm btn-block" onclick="event.stopPropagation();buyNow('${p.id}')">Beli Sekarang</button>
+          <button class="btn btn-ghost btn-sm btn-block" onclick="event.stopPropagation();openProduct('${p.id}')">Detail</button>
+        </div>
       </div>`).join('')}
   </div>`;
 }
@@ -718,13 +758,16 @@ function ProductModal(){
   return `
   <div class="overlay" onclick="if(event.target===this) closeProduct()">
     <div class="modal">
-      <div class="modal-top"><div>${p.image?`<img class="prod-img-flat" style="width:110px;height:110px;" src="${p.image}" alt="${p.name}">`:`<div class="prod-hex" style="margin:0 0 12px;">${p.icon}</div>`}<h3>${p.name}</h3></div><button class="x-btn" onclick="closeProduct()">✕</button></div>
+      <div class="modal-top"><div>${p.image?`<img class="prod-img-flat" style="width:110px;height:110px;" src="${p.image}" alt="${p.name}">`:`<div class="prod-hex" style="margin:0 0 12px;">${ic('package',28)}</div>`}<h3>${p.name}</h3></div><button class="x-btn" onclick="closeProduct()">${ic('close',16)}</button></div>
       <p style="color:var(--text-dim);font-size:14px;line-height:1.65;">${p.desc}</p>
       <div style="display:flex;justify-content:space-between;align-items:center;margin:18px 0 20px;padding:14px 16px;background:var(--card);border-radius:var(--radius-md);">
         <div><div style="font-size:11px;color:var(--text-dimmer);">Harga retail</div><div style="font-size:20px;font-weight:700;">${fmtRp(p.price)}</div></div>
         <span class="badge badge-gold">${p.tag}</span>
       </div>
-      <button class="btn btn-primary btn-block" onclick="addToCart('${p.id}')">Tambah ke Keranjang</button>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <button class="btn btn-primary btn-block" onclick="buyNow('${p.id}')">Beli Sekarang</button>
+        <button class="btn btn-ghost btn-block" onclick="addToCart('${p.id}')">Tambah ke Keranjang</button>
+      </div>
     </div>
   </div>`;
 }
@@ -734,9 +777,17 @@ function openCart(){ state.cartOpen=true; render(); }
 function closeCart(){ state.cartOpen=false; render(); }
 function addToCart(pid){
   const p = state.products.find(x=>x.id===pid);
+  if(!p) return;
   const ex = state.cart.find(c=>c.id===pid);
   if(ex) ex.qty++; else state.cart.push({id:p.id, name:p.name, price:p.price, qty:1});
   state.productModal=null; state.cartOpen=true; toast('Ditambahkan ke keranjang');
+}
+function buyNow(pid){
+  const p = state.products.find(x=>x.id===pid);
+  if(!p) return;
+  state.cart = [{id:p.id, name:p.name, price:p.price, qty:1}];
+  state.productModal=null; state.cartOpen=false;
+  openCheckout();
 }
 function changeQty(id,d){ const it=state.cart.find(c=>c.id===id); it.qty+=d; if(it.qty<=0) state.cart=state.cart.filter(c=>c.id!==id); render(); }
 function removeFromCart(id){ state.cart = state.cart.filter(c=>c.id!==id); render(); }
@@ -749,11 +800,11 @@ function CartDrawer(){
   <div class="drawer">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;"><h3 style="margin:0;">Keranjang</h3><button class="x-btn" onclick="closeCart()">✕</button></div>
     <div style="flex:1;overflow-y:auto;">
-      ${state.cart.length===0?`<div class="empty-state"><div class="em">🧺</div>Keranjang masih kosong.</div>`:
+      ${state.cart.length===0?`<div class="empty-state"><div class="em">${ic('cart',32)}</div>Keranjang masih kosong.</div>`:
       state.cart.map(c=>{
         const prod = state.products.find(p=>p.id===c.id);
         return `
-      <div class="cart-item"><div class="ic">${prod&&prod.image?`<img src="${prod.image}">`:'🍯'}</div>
+      <div class="cart-item"><div class="ic">${prod&&prod.image?`<img src="${prod.image}">`:`${ic('package',20)}`}</div>
         <div class="info"><h4>${c.name}</h4><div class="p">${fmtRp(c.price)}</div>
           <div class="qty-ctrl"><button onclick="changeQty('${c.id}',-1)">−</button><span>${c.qty}</span><button onclick="changeQty('${c.id}',1)">+</button>
           <a style="margin-left:auto;color:var(--red);font-size:12px;" onclick="removeFromCart('${c.id}')">Hapus</a></div>
@@ -766,7 +817,7 @@ function CartDrawer(){
     </div>`:''}
   </div></div>`;
 }
-function openCheckout(){ if(state.cart.length===0) return; state.formModal={type:'checkout'}; render(); setTimeout(()=>{ updateCheckoutSummary(); updatePaymentDetail(); },0); }
+function openCheckout(){ if(state.cart.length===0) return; state.formModal={type:'checkout'}; render(); setTimeout(()=>{ updateCheckoutSummary(); updatePaymentDetail(); onCheckoutAddrChange(); },0); }
 function closeFormModal(){ state.formModal=null; render(); }
 
 function CheckoutModal(){
@@ -853,7 +904,6 @@ function submitCheckout(e){
   order.paymentMethodId = pm ? pm.id : null;
   state.orders.unshift(order);
   if(u && u.role==='member'){ u.totalSpend = (u.totalSpend||0) + c.total; }
-  if(u && ga.isNew) addAddressToUser(u, ga.addr, false);
   persist();
   state.cart=[]; state.cartOpen=false;
   state.proofDraft = null;
@@ -1038,30 +1088,30 @@ function CustomerSidebar(u, active, unreadNotif){
   }
   const chatUnread = chatUnreadForUser(u.id);
   const items = [
-    {icon:'📊', label:'Ringkasan', route:'#/akun'},
-    {icon:'📈', label:'Dashboard Mitra', route:'#/seller'},
-    {icon:'🧾', label:'Riwayat Pesanan', route:'#/akun/pesanan'},
-    {icon:'🔗', label:'Referral & Matrix', route:'#/seller/referral'},
-    {icon:'💬', label:'Chat Admin', route:'#/akun/chat', badge:chatUnread},
-    {icon:'🔔', label:'Pemberitahuan', route:'#/seller/pemberitahuan', badge:unreadNotif},
-    {icon:'👤', label:'Profil Saya', route:'#/akun/profil'},
-    {icon:'📍', label:'Alamat Saya', route:'#/akun/alamat'},
-    {icon:'🔒', label:'Keamanan', route:'#/akun/keamanan'},
-    {icon:'💳', label:'Penarikan Dana', route:'#/seller/penarikan'},
+    {icon:'chart', label:'Ringkasan', route:'#/akun'},
+    {icon:'star', label:'Dashboard Mitra', route:'#/seller'},
+    {icon:'bag', label:'Riwayat Pesanan', route:'#/akun/pesanan'},
+    {icon:'link', label:'Referral & Matrix', route:'#/seller/referral'},
+    {icon:'chat', label:'Chat Admin', route:'#/akun/chat', badge:chatUnread},
+    {icon:'bell', label:'Pemberitahuan', route:'#/seller/pemberitahuan', badge:unreadNotif},
+    {icon:'user', label:'Profil Saya', route:'#/akun/profil'},
+    {icon:'map', label:'Alamat Saya', route:'#/akun/alamat'},
+    {icon:'lock', label:'Keamanan', route:'#/akun/keamanan'},
+    {icon:'wallet', label:'Penarikan Dana', route:'#/seller/penarikan'},
   ];
   return `
   <div class="sidebar">
     <div class="brand">${brandMark(30)}GLOWNESS</div>
-    <button class="dash-menu-btn" onclick="toggleDashMenu()" aria-label="Menu">${state.dashMenuOpen?'✕':'☰'}</button>
+    <button class="dash-menu-btn" onclick="toggleDashMenu()" aria-label="Menu">${state.dashMenuOpen?ic('close',18):ic('menu',18)}</button>
     ${state.dashMenuOpen?`<div class="dash-sidebar-backdrop" onclick="closeDashMenu()"></div>`:''}
     <div class="sidebar-nav ${state.dashMenuOpen?'open':''}">
       <div class="side-user"><div class="av">${avatarHtml(u)}</div><div><div class="name">${u.name}</div><div class="role">Member</div></div></div>
       <div class="nav-label">Menu</div>
-      ${items.map(it=>`<a class="nav-item ${active===it.route?'active':''}" href="${it.route}" onclick="closeDashMenu()"><span class="ic">${it.icon}</span>${it.label}${it.badge?`<span class="nav-badge">${it.badge}</span>`:''}</a>`).join('')}
+      ${items.map(it=>`<a class="nav-item ${active===it.route?'active':''}" href="${it.route}" onclick="closeDashMenu()"><span class="ic">${ic(it.icon,16)}</span>${it.label}${it.badge?`<span class="nav-badge">${it.badge}</span>`:''}</a>`).join('')}
       <div class="sidebar-foot">
         <div class="sidebar-theme">${themeToggleBtn()}<span style="font-size:12.5px;color:var(--text-dim);">Tema ${state.theme==='light'?'Terang':'Gelap'}</span></div>
-        <a class="nav-item" href="#/beranda" onclick="closeDashMenu()"><span class="ic">🏬</span>Lihat Toko</a>
-        <a class="nav-item" onclick="doLogout()"><span class="ic">🚪</span>Keluar</a>
+        <a class="nav-item" href="#/beranda" onclick="closeDashMenu()"><span class="ic">${ic('store',16)}</span>Lihat Toko</a>
+        <a class="nav-item" onclick="doLogout()"><span class="ic">${ic('logout',16)}</span>Keluar</a>
       </div>
     </div>
   </div>`;
@@ -1257,46 +1307,53 @@ function deleteAddress(id){
   if(wasDef && u.addresses.length) u.addresses[0].isDefault = true;
   persist(); render(); toast('Alamat dihapus');
 }
-/* --- blok alamat di checkout --- */
+/* --- blok alamat di checkout: hanya pilih dari Alamat Saya --- */
 function checkoutAddressBlock(u){
   const list = userAddresses(u);
   const def = defaultAddress(u);
-  const seed = { recipient: u?u.name:'', street: (!list.length && u && u.address) ? u.address : '' };
+  if(!u || u.role!=='member'){
+    return `<div class="field"><label>Alamat Pengiriman</label>
+      <div class="addr-locked">
+        <div class="addr-locked-ic">${ic('map',22)}</div>
+        <div>Login dulu, lalu isi alamat di <b>Akun → Alamat Saya</b> sebelum checkout.</div>
+        <button type="button" class="btn btn-soft btn-sm" style="margin-top:10px;" onclick="closeFormModal();openAuth('login')">Masuk / Daftar</button>
+      </div></div>`;
+  }
+  if(!list.length){
+    return `<div class="field"><label>Alamat Pengiriman</label>
+      <div class="addr-locked">
+        <div class="addr-locked-ic">${ic('map',22)}</div>
+        <div>Belum ada alamat tersimpan. Tambahkan dulu di menu Alamat Saya.</div>
+        <a class="btn btn-soft btn-sm" style="margin-top:10px;" href="#/akun/alamat" onclick="closeFormModal()">Kelola Alamat</a>
+      </div></div>`;
+  }
   return `
   <div class="field"><label>Alamat Pengiriman</label>
-    ${list.length?`
-    <select id="co-addr-sel" onchange="onCheckoutAddrChange()">
+    <select id="co-addr-sel" onchange="onCheckoutAddrChange()" required>
       ${list.map(a=>`<option value="${a.id}" ${def&&def.id===a.id?'selected':''}>${esc(a.label)} — ${esc(a.recipient)}${a.isDefault?' (Utama)':''}</option>`).join('')}
-      <option value="__new">+ Pakai alamat baru…</option>
     </select>
-    <div id="co-addr-preview" class="field-hint" style="margin-top:8px;line-height:1.6;"></div>`:''}
-    <div id="co-addr-new" style="${list.length?'display:none;':''}margin-top:${list.length?'12':'0'}px;">
-      ${addrFieldsHtml('co-a', seed)}
-      ${u?`<div class="field-hint" style="margin-top:-6px;">Alamat baru akan tersimpan di menu Alamat Saya.</div>`:''}
-    </div>
+    <div id="co-addr-preview" class="field-hint" style="margin-top:8px;line-height:1.6;"></div>
+    <div class="field-hint" style="margin-top:6px;">Ubah atau tambah alamat lewat <a href="#/akun/alamat" onclick="closeFormModal()" style="color:var(--gold-2);font-weight:600;">Akun → Alamat Saya</a>.</div>
   </div>`;
 }
 function onCheckoutAddrChange(){
   const sel = document.getElementById('co-addr-sel');
-  const box = document.getElementById('co-addr-new');
   const pv = document.getElementById('co-addr-preview');
-  if(!sel) return;
-  const isNew = sel.value==='__new';
-  if(box) box.style.display = isNew ? 'block' : 'none';
-  if(pv){
-    const a = userAddresses(currentUser()).find(x=>x.id===sel.value);
-    pv.innerHTML = (!isNew && a) ? `${esc(a.recipient)} · ${esc(a.phone)}<br>${esc(addressLine(a))}${a.note?`<br>Patokan: ${esc(a.note)}`:''}` : '';
-  }
+  if(!sel || !pv) return;
+  const a = userAddresses(currentUser()).find(x=>x.id===sel.value);
+  pv.innerHTML = a ? `${esc(a.recipient)} · ${esc(a.phone)}<br>${esc(addressLine(a))}${a.note?`<br>Patokan: ${esc(a.note)}`:''}` : '';
 }
-/* ambil alamat dari checkout → {addr, isNew} | {error} */
+/* ambil alamat dari checkout → hanya alamat tersimpan */
 function getCheckoutAddress(){
+  const u = currentUser();
+  if(!u || u.role!=='member') return {error:'Login dulu dan isi alamat di Akun → Alamat Saya'};
+  const list = userAddresses(u);
+  if(!list.length) return {error:'Tambahkan alamat di Akun → Alamat Saya sebelum checkout'};
   const sel = document.getElementById('co-addr-sel');
-  if(sel && sel.value!=='__new'){
-    const a = userAddresses(currentUser()).find(x=>x.id===sel.value);
-    if(a) return {addr:a, isNew:false};
-  }
-  const r = readAddrFields('co-a');
-  return r.error ? r : {addr:r.addr, isNew:true};
+  const id = sel ? sel.value : (defaultAddress(u)||{}).id;
+  const a = list.find(x=>x.id===id) || defaultAddress(u);
+  if(!a) return {error:'Pilih alamat pengiriman'};
+  return {addr:a, isNew:false};
 }
 
 function pageAkunKeamanan(u){
@@ -1920,18 +1977,18 @@ function saveProfilePassword(e){
 ===================================================== */
 function navItemsStaff(){
   return [
-    {icon:'📊', label:'Dashboard', route:'#/portal/dashboard'},
-    {icon:'🍯', label:'Produk', route:'#/portal/produk'},
-    {icon:'🧾', label:'Pesanan', route:'#/portal/pesanan', badge:pendingProofCount()},
-    {icon:'💬', label:'Chat', route:'#/portal/chat', badge:chatUnreadForAdmin()},
-    {icon:'👥', label:'Pengguna', route:'#/portal/pengguna'},
-    {icon:'🤝', label:'Mitra', route:'#/portal/seller'},
-    {icon:'🏦', label:'Metode Pembayaran', route:'#/portal/pembayaran'},
-    {icon:'🔔', label:'Pemberitahuan', route:'#/portal/pemberitahuan'},
-    {icon:'📣', label:'Pengumuman', route:'#/portal/pengumuman'},
-    {icon:'💰', label:'Keuangan', route:'#/portal/keuangan'},
-    {icon:'💳', label:'Penarikan Dana', route:'#/portal/penarikan'},
-    {icon:'⚙️', label:'Pengaturan', route:'#/portal/pengaturan'},
+    {icon:'chart', label:'Dashboard', route:'#/portal/dashboard'},
+    {icon:'package', label:'Produk', route:'#/portal/produk'},
+    {icon:'bag', label:'Pesanan', route:'#/portal/pesanan', badge:pendingProofCount()},
+    {icon:'chat', label:'Chat', route:'#/portal/chat', badge:chatUnreadForAdmin()},
+    {icon:'user', label:'Pengguna', route:'#/portal/pengguna'},
+    {icon:'star', label:'Mitra', route:'#/portal/seller'},
+    {icon:'wallet', label:'Metode Pembayaran', route:'#/portal/pembayaran'},
+    {icon:'bell', label:'Pemberitahuan', route:'#/portal/pemberitahuan'},
+    {icon:'tag', label:'Pengumuman', route:'#/portal/pengumuman'},
+    {icon:'chart', label:'Keuangan', route:'#/portal/keuangan'},
+    {icon:'wallet', label:'Penarikan Dana', route:'#/portal/penarikan'},
+    {icon:'lock', label:'Pengaturan', route:'#/portal/pengaturan'},
   ];
 }
 function StaffSidebar(u){
@@ -1939,16 +1996,16 @@ function StaffSidebar(u){
   return `
   <div class="sidebar">
     <div class="brand">${brandMark(30)}GLOWNESS</div>
-    <button class="dash-menu-btn" onclick="toggleDashMenu()" aria-label="Menu">${state.dashMenuOpen?'✕':'☰'}</button>
+    <button class="dash-menu-btn" onclick="toggleDashMenu()" aria-label="Menu">${state.dashMenuOpen?ic('close',18):ic('menu',18)}</button>
     ${state.dashMenuOpen?`<div class="dash-sidebar-backdrop" onclick="closeDashMenu()"></div>`:''}
     <div class="sidebar-nav ${state.dashMenuOpen?'open':''}">
       <div class="side-user"><div class="av">${avatarHtml(u)}</div><div><div class="name">${u.name}</div><div class="role">${u.role}</div></div></div>
       <div class="nav-label">Menu</div>
-      ${items.map(it=>`<a class="nav-item ${state.route===it.route?'active':''}" href="${it.route}" onclick="closeDashMenu()"><span class="ic">${it.icon}</span>${it.label}${it.badge?`<span class="nav-badge">${it.badge}</span>`:''}</a>`).join('')}
+      ${items.map(it=>`<a class="nav-item ${state.route===it.route?'active':''}" href="${it.route}" onclick="closeDashMenu()"><span class="ic">${ic(it.icon,16)}</span>${it.label}${it.badge?`<span class="nav-badge">${it.badge}</span>`:''}</a>`).join('')}
       <div class="sidebar-foot">
         <div class="sidebar-theme">${themeToggleBtn()}<span style="font-size:12.5px;color:var(--text-dim);">Tema ${state.theme==='light'?'Terang':'Gelap'}</span></div>
-        <a class="nav-item" href="#/beranda" onclick="closeDashMenu()"><span class="ic">🏬</span>Lihat Toko</a>
-        <a class="nav-item" onclick="doLogout()"><span class="ic">🚪</span>Keluar</a>
+        <a class="nav-item" href="#/beranda" onclick="closeDashMenu()"><span class="ic">${ic('store',16)}</span>Lihat Toko</a>
+        <a class="nav-item" onclick="doLogout()"><span class="ic">${ic('logout',16)}</span>Keluar</a>
       </div>
     </div>
   </div>`;
