@@ -1328,3 +1328,44 @@ html[data-theme="light"] .chat-compose-bar{background:#f0f1f4;border-color:rgba(
 .chat-tool-icon svg{display:block}
 .chat-send-btn svg{display:block}
 .side-user .av img,.av img{width:100%;height:100%;object-fit:cover;border-radius:inherit}
+
+/* SVG icons */
+.ic-svg{display:inline-block;vertical-align:middle;flex-shrink:0}
+.nav-item .ic{display:inline-flex;align-items:center;justify-content:center;width:20px;color:inherit}
+.nav-item .ic .ic-svg{opacity:.9}
+.cart-pill .ic-svg{margin-right:2px}
+.theme-toggle .ic-svg,.burger-btn .ic-svg,.dash-menu-btn .ic-svg{display:block}
+.why-card .em{display:flex;align-items:center;justify-content:center;color:var(--gold-2)}
+.prod-hex .ic-svg{color:#fff}
+.cart-item .ic .ic-svg{color:var(--gold-2)}
+.empty-state .em{display:flex;justify-content:center;color:var(--text-dimmer)}
+.x-btn{display:inline-flex;align-items:center;justify-content:center}
+
+/* locked address box at checkout */
+.addr-locked{
+  padding:16px;
+  background:var(--card);
+  border:1px dashed var(--border-strong);
+  border-radius:var(--radius-md);
+  text-align:center;
+  font-size:13px;
+  color:var(--text-dim);
+  line-height:1.55;
+}
+.addr-locked-ic{margin-bottom:8px;color:var(--gold-2);display:flex;justify-content:center}
+
+/* brand logo ensure visible */
+.brand-mark{
+  background:transparent !important;
+  border-radius:22% !important;
+  overflow:hidden;
+  padding:0;
+  box-shadow:0 0 0 1.5px rgba(108,92,231,.35), 0 4px 12px -4px rgba(108,92,231,.4);
+  flex-shrink:0;
+}
+.brand-mark img{
+  width:100% !important;
+  height:100% !important;
+  object-fit:cover;
+  display:block;
+}
