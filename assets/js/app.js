@@ -113,6 +113,7 @@ let state = {
   formModal:null,
   products:[], orders:[], users:[], withdrawals:[], balanceLogs:[], pendingLogs:[], settings:SEED_SETTINGS,
   notifications:[], announcement:null, announceDismissed:false,
+  chats:[], chatOpen:false, chatActiveId:null, chatDraft:'',
   loaded:false,
   regTemp:{},       // temp holder for registration wizard values across steps
   theme: localStorage.getItem('glowness_theme') || 'dark',
@@ -121,6 +122,13 @@ let state = {
   dashMenuOpen:false,
   proofDraft:null, proofCache:{}, proofBusy:false,
 };
+function brandMark(size){
+  const s = size || 38;
+  return `<div class="brand-mark" style="width:${s}px;height:${s}px;"><img src="assets/img/logo.webp" alt="GLOWNESS" onerror="this.onerror=null;this.src='assets/img/logo-sm.png'"></div>`;
+}
+function themeToggleBtn(){
+  return `<button class="theme-toggle" onclick="toggleTheme()" aria-label="Ganti tema">${state.theme==='light'?'🌙':'☀️'}</button>`;
+}
 function toggleTheme(){
   state.theme = state.theme==='light' ? 'dark' : 'light';
   localStorage.setItem('glowness_theme', state.theme);
@@ -192,6 +200,8 @@ async function initData(){
   state.settings = await loadShared('oliv_settings', SEED_SETTINGS);
   state.notifications = await loadShared('oliv_notifications', SEED_NOTIFICATIONS);
   state.announcement = await loadShared('oliv_announcement', SEED_ANNOUNCEMENT);
+  state.chats = await loadShared('oliv_chats', []);
+  if(!Array.isArray(state.chats)) state.chats = [];
   delete state.settings.packages;
   if(!state.settings.paymentMethods) state.settings.paymentMethods = SEED_PAYMENTS;
   if(!state.settings.matrix) state.settings.matrix = {width:3, depth:5};
@@ -212,6 +222,7 @@ function persist(){
   saveShared('oliv_settings', state.settings);
   saveShared('oliv_notifications', state.notifications);
   saveShared('oliv_announcement', state.announcement);
+  saveShared('oliv_chats', state.chats);
 }
 /* ---------- referral capture, escape, copy ---------- */
 (function(){ try{ const r=new URLSearchParams(location.search).get('ref'); if(r) localStorage.setItem('gl_ref', r.trim().toUpperCase()); }catch(e){} })();
@@ -556,12 +567,11 @@ function Nav(){
         <a class="logout" onclick="doLogout()">Keluar</a>
       </div>`;
   }
-  const themeBtn = `<button class="theme-toggle" onclick="toggleTheme()" aria-label="Ganti tema">${state.theme==='light'?'🌙':'☀️'}</button>`;
   const burger = `<button class="burger-btn" onclick="toggleMobileMenu()" aria-label="Menu">${state.mobileMenuOpen?'✕':'☰'}</button>`;
   return `
   <div class="cnav">
     <div class="wrap cnav-inner">
-      <div class="brand"><div class="brand-mark">🐝</div><div class="brand-txt">${SITE_NAME}<small>Belanja · Untung · Bareng</small></div></div>
+      <a class="brand" href="#/beranda">${brandMark(38)}<div class="brand-txt">${SITE_NAME}<small>Belanja Mudah · Hidup Lebih Indah</small></div></a>
       <div class="search-box">
         <input type="text" id="navSearch" value="${esc(state.navSearchValue)}" placeholder="Cari produk..." onkeydown="if(event.key==='Enter'){event.preventDefault();doSearch();}">
         <button type="button" onclick="doSearch()" aria-label="Cari">🔍</button>
@@ -570,6 +580,7 @@ function Nav(){
         <a href="#/beranda" onclick="closeMobileMenu()" class="${state.route==='#/beranda'?'active':''}">Beranda</a>
         <a href="#/produk" onclick="closeMobileMenu()" class="${state.route==='#/produk'?'active':''}">Produk</a>
         <a href="#/jadi-seller" onclick="closeMobileMenu()" class="${state.route==='#/jadi-seller'?'active':''}">Peluang Bisnis</a>
+        <a href="#/akun/chat" onclick="closeMobileMenu()">💬 Chat Admin</a>
       </div>`:''}
       <div class="cnav-links">
         <a href="#/beranda" class="${state.route==='#/beranda'?'active':''}">Beranda</a>
@@ -577,7 +588,7 @@ function Nav(){
         <a href="#/jadi-seller" class="${state.route==='#/jadi-seller'?'active':''}">Peluang Bisnis</a>
       </div>
       <div class="nav-right">
-        ${themeBtn}
+        ${themeToggleBtn()}
         <button class="cart-pill" onclick="openCart()">🧺 <span class="cart-count">${state.cart.reduce((a,c)=>a+c.qty,0)}</span></button>
         ${right}
         ${burger}
@@ -692,7 +703,7 @@ function SellerCta(){
 }
 function Foot(){
   return `<footer><div class="wrap foot-row">
-    <div class="brand" style="font-size:14.5px;"><div class="brand-mark" style="width:28px;height:28px;font-size:13px;">🐝</div>${SITE_NAME}</div>
+    <div class="brand" style="font-size:14.5px;">${brandMark(28)}${SITE_NAME}</div>
     <div class="text-dim">© 2026 ${SITE_NAME}. Tim internal? <a onclick="openAuth('login')" style="color:var(--gold-2);font-weight:600;">Masuk ke Portal →</a></div>
   </div></footer>`;
 }
@@ -1025,11 +1036,13 @@ function CustomerSidebar(u, active, unreadNotif){
   if(unreadNotif===undefined){
     unreadNotif = (state.notifications||[]).filter(n=>!(u.readNotifIds||[]).includes(n.id)).length;
   }
+  const chatUnread = chatUnreadForUser(u.id);
   const items = [
     {icon:'📊', label:'Ringkasan', route:'#/akun'},
     {icon:'📈', label:'Dashboard Mitra', route:'#/seller'},
     {icon:'🧾', label:'Riwayat Pesanan', route:'#/akun/pesanan'},
     {icon:'🔗', label:'Referral & Matrix', route:'#/seller/referral'},
+    {icon:'💬', label:'Chat Admin', route:'#/akun/chat', badge:chatUnread},
     {icon:'🔔', label:'Pemberitahuan', route:'#/seller/pemberitahuan', badge:unreadNotif},
     {icon:'👤', label:'Profil Saya', route:'#/akun/profil'},
     {icon:'📍', label:'Alamat Saya', route:'#/akun/alamat'},
@@ -1038,7 +1051,7 @@ function CustomerSidebar(u, active, unreadNotif){
   ];
   return `
   <div class="sidebar">
-    <div class="brand"><div class="brand-mark" style="width:30px;height:30px;font-size:14px;">🐝</div>GLOWNESS</div>
+    <div class="brand">${brandMark(30)}GLOWNESS</div>
     <button class="dash-menu-btn" onclick="toggleDashMenu()" aria-label="Menu">${state.dashMenuOpen?'✕':'☰'}</button>
     ${state.dashMenuOpen?`<div class="dash-sidebar-backdrop" onclick="closeDashMenu()"></div>`:''}
     <div class="sidebar-nav ${state.dashMenuOpen?'open':''}">
@@ -1046,6 +1059,7 @@ function CustomerSidebar(u, active, unreadNotif){
       <div class="nav-label">Menu</div>
       ${items.map(it=>`<a class="nav-item ${active===it.route?'active':''}" href="${it.route}" onclick="closeDashMenu()"><span class="ic">${it.icon}</span>${it.label}${it.badge?`<span class="nav-badge">${it.badge}</span>`:''}</a>`).join('')}
       <div class="sidebar-foot">
+        <div class="sidebar-theme">${themeToggleBtn()}<span style="font-size:12.5px;color:var(--text-dim);">Tema ${state.theme==='light'?'Terang':'Gelap'}</span></div>
         <a class="nav-item" href="#/beranda" onclick="closeDashMenu()"><span class="ic">🏬</span>Lihat Toko</a>
         <a class="nav-item" onclick="doLogout()"><span class="ic">🚪</span>Keluar</a>
       </div>
@@ -1306,9 +1320,180 @@ function renderAkunCustomer(){
     case '#/akun/profil': content = pageAkunProfil(u); break;
     case '#/akun/alamat': content = pageAkunAlamat(u); break;
     case '#/akun/keamanan': content = pageAkunKeamanan(u); break;
+    case '#/akun/chat': content = pageAkunChat(u); break;
     default: content = pageAkunRingkasan(u);
   }
   return `<div class="dash-wrap">${CustomerSidebar(u, state.route)}<div class="dash-main">${content}</div></div>${PaymentInfoModal()}${AddressModal()}${Toast()}`;
+}
+
+/* =====================================================
+   CHAT ADMIN (web)
+   Thread: {id, userId, userName, guestName?, messages:[{id,from,text,at,read}], updatedAt}
+===================================================== */
+function guestChatKey(){
+  try{
+    let k = localStorage.getItem('gl_guest_chat');
+    if(!k){ k = 'g'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); localStorage.setItem('gl_guest_chat', k); }
+    return k;
+  }catch(e){ return 'guest'; }
+}
+function myChatThreadId(){
+  const u = currentUser();
+  if(u && u.role==='member') return u.id;
+  return guestChatKey();
+}
+function getOrCreateThread(uid, name){
+  let t = (state.chats||[]).find(c=>c.userId===uid);
+  if(!t){
+    t = {id:'ch'+Date.now().toString(36), userId:uid, userName:name||'Pengunjung', messages:[], updatedAt:new Date().toISOString()};
+    state.chats = state.chats || [];
+    state.chats.unshift(t);
+  }
+  return t;
+}
+function chatUnreadForUser(uid){
+  const t = (state.chats||[]).find(c=>c.userId===uid);
+  if(!t) return 0;
+  return (t.messages||[]).filter(m=>m.from==='admin' && !m.read).length;
+}
+function chatUnreadForAdmin(){
+  return (state.chats||[]).reduce((n,t)=>n+(t.messages||[]).filter(m=>m.from==='user' && !m.read).length, 0);
+}
+function markChatRead(thread, asRole){
+  if(!thread) return;
+  let changed = false;
+  (thread.messages||[]).forEach(m=>{
+    if(asRole==='user' && m.from==='admin' && !m.read){ m.read=true; changed=true; }
+    if(asRole==='admin' && m.from==='user' && !m.read){ m.read=true; changed=true; }
+  });
+  if(changed) persist();
+}
+function sendChatMessage(text, from){
+  text = (text||'').trim();
+  if(!text) return;
+  const u = currentUser();
+  let uid, name;
+  if(from==='admin'){
+    const active = state.chatActiveId;
+    if(!active){ toast('Pilih percakapan dulu'); return; }
+    const t = (state.chats||[]).find(c=>c.id===active || c.userId===active);
+    if(!t){ toast('Percakapan tidak ditemukan'); return; }
+    t.messages.push({id:'m'+Date.now(), from:'admin', text, at:new Date().toISOString(), read:false});
+    t.updatedAt = new Date().toISOString();
+    state.chatDraft = '';
+    persist(); render();
+    setTimeout(()=>{ const el=document.getElementById('chat-msgs'); if(el) el.scrollTop=el.scrollHeight; }, 50);
+    return;
+  }
+  if(u && u.role==='member'){ uid = u.id; name = u.name; }
+  else {
+    const nameEl = document.getElementById('chat-guest-name');
+    name = (nameEl && nameEl.value.trim()) || 'Pengunjung';
+    uid = guestChatKey();
+  }
+  const t = getOrCreateThread(uid, name);
+  t.userName = name;
+  t.messages.push({id:'m'+Date.now(), from:'user', text, at:new Date().toISOString(), read:false});
+  t.updatedAt = new Date().toISOString();
+  state.chatDraft = '';
+  persist(); render();
+  setTimeout(()=>{ const el=document.getElementById('chat-msgs'); if(el) el.scrollTop=el.scrollHeight; }, 50);
+}
+function openChatWidget(){
+  state.chatOpen = true;
+  const uid = myChatThreadId();
+  const t = (state.chats||[]).find(c=>c.userId===uid);
+  if(t) markChatRead(t, 'user');
+  render();
+  setTimeout(()=>{ const el=document.getElementById('chat-msgs'); if(el) el.scrollTop=el.scrollHeight; }, 60);
+}
+function closeChatWidget(){ state.chatOpen=false; render(); }
+function selectAdminChat(id){
+  state.chatActiveId = id;
+  const t = (state.chats||[]).find(c=>c.id===id || c.userId===id);
+  markChatRead(t, 'admin');
+  render();
+  setTimeout(()=>{ const el=document.getElementById('chat-msgs'); if(el) el.scrollTop=el.scrollHeight; }, 50);
+}
+function chatBubbleHtml(msgs){
+  if(!msgs || !msgs.length) return `<div class="chat-empty">Belum ada pesan. Tulis pertanyaanmu, admin akan membalas di sini.</div>`;
+  return msgs.map(m=>{
+    const mine = m.from==='user';
+    const time = m.at ? new Date(m.at).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+    return `<div class="chat-bubble ${mine?'me':'them'}"><div class="chat-text">${esc(m.text)}</div><div class="chat-meta">${m.from==='admin'?'Admin · ':''}${time}</div></div>`;
+  }).join('');
+}
+function ChatWidget(){
+  const u = currentUser();
+  if(u && (u.role==='admin'||u.role==='owner')) return '';
+  const uid = myChatThreadId();
+  const t = (state.chats||[]).find(c=>c.userId===uid);
+  const unread = t ? (t.messages||[]).filter(m=>m.from==='admin' && !m.read).length : 0;
+  if(!state.chatOpen){
+    return `<button class="chat-fab" onclick="openChatWidget()" aria-label="Chat Admin">💬${unread?`<span class="chat-fab-badge">${unread}</span>`:''}</button>`;
+  }
+  const guest = !(u && u.role==='member');
+  return `
+  <div class="chat-widget">
+    <div class="chat-head">
+      <div class="chat-head-info">${brandMark(28)}<div><b>Chat Admin</b><small>GLOWNESS SHOP · Online</small></div></div>
+      <button class="x-btn" onclick="closeChatWidget()" aria-label="Tutup">✕</button>
+    </div>
+    <div class="chat-msgs" id="chat-msgs">${chatBubbleHtml(t?t.messages:[])}</div>
+    <div class="chat-compose">
+      ${guest?`<input id="chat-guest-name" class="chat-name-input" placeholder="Namamu (opsional)" value="${esc(t?t.userName:'')}">`:''}
+      <div class="chat-row">
+        <input id="chat-input" placeholder="Tulis pesan..." value="${esc(state.chatDraft)}" onkeydown="if(event.key==='Enter'){event.preventDefault();sendChatMessage(this.value,'user');}">
+        <button class="btn btn-primary btn-sm" onclick="sendChatMessage(document.getElementById('chat-input').value,'user')">Kirim</button>
+      </div>
+    </div>
+  </div>`;
+}
+function pageAkunChat(u){
+  const t = getOrCreateThread(u.id, u.name);
+  markChatRead(t, 'user');
+  return `
+  <div class="pg-head"><div><h1>Chat Admin</h1><p>Tanya langsung ke admin GLOWNESS SHOP.</p></div></div>
+  <div class="panel chat-panel">
+    <div class="chat-msgs chat-msgs-tall" id="chat-msgs">${chatBubbleHtml(t.messages)}</div>
+    <div class="chat-compose">
+      <div class="chat-row">
+        <input id="chat-input" placeholder="Tulis pesan..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendChatMessage(this.value,'user');}">
+        <button class="btn btn-primary btn-sm" onclick="sendChatMessage(document.getElementById('chat-input').value,'user')">Kirim</button>
+      </div>
+    </div>
+  </div>`;
+}
+function pageStaffChat(){
+  const threads = (state.chats||[]).slice().sort((a,b)=>new Date(b.updatedAt||0)-new Date(a.updatedAt||0));
+  let active = threads.find(c=>c.id===state.chatActiveId || c.userId===state.chatActiveId);
+  if(!active && threads[0]){ active = threads[0]; state.chatActiveId = active.id; markChatRead(active,'admin'); }
+  return `
+  <div class="pg-head"><div><h1>Chat</h1><p>Balas pesan dari pembeli & mitra.</p></div></div>
+  <div class="chat-admin">
+    <div class="chat-list">
+      ${threads.length===0?`<div class="empty-state"><div class="em">💬</div>Belum ada percakapan.</div>`:
+        threads.map(t=>{
+          const last = (t.messages||[])[(t.messages||[]).length-1];
+          const unread = (t.messages||[]).filter(m=>m.from==='user'&&!m.read).length;
+          return `<button class="chat-list-item ${active&&active.id===t.id?'active':''}" onclick="selectAdminChat('${t.id}')">
+            <div class="cli-top"><b>${esc(t.userName||'Pengunjung')}</b>${unread?`<span class="nav-badge">${unread}</span>`:''}</div>
+            <div class="cli-preview">${last?esc(last.text):'—'}</div>
+          </button>`;
+        }).join('')}
+    </div>
+    <div class="chat-panel panel" style="margin:0;">
+      ${!active?`<div class="empty-state"><div class="em">👈</div>Pilih percakapan.</div>`:`
+        <div class="chat-panel-head"><b>${esc(active.userName)}</b><small>${esc(active.userId)}</small></div>
+        <div class="chat-msgs chat-msgs-tall" id="chat-msgs">${chatBubbleHtml(active.messages)}</div>
+        <div class="chat-compose">
+          <div class="chat-row">
+            <input id="chat-input" placeholder="Balas sebagai admin..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendChatMessage(this.value,'admin');}">
+            <button class="btn btn-primary btn-sm" onclick="sendChatMessage(document.getElementById('chat-input').value,'admin')">Kirim</button>
+          </div>
+        </div>`}
+    </div>
+  </div>`;
 }
 function ordersTableSimple(orders, payActions){
   if(orders.length===0) return `<div class="empty-state"><div class="em">🧾</div>Belum ada pesanan.</div>`;
@@ -1640,6 +1825,7 @@ function navItemsStaff(){
     {icon:'📊', label:'Dashboard', route:'#/portal/dashboard'},
     {icon:'🍯', label:'Produk', route:'#/portal/produk'},
     {icon:'🧾', label:'Pesanan', route:'#/portal/pesanan', badge:pendingProofCount()},
+    {icon:'💬', label:'Chat', route:'#/portal/chat', badge:chatUnreadForAdmin()},
     {icon:'👥', label:'Pengguna', route:'#/portal/pengguna'},
     {icon:'🤝', label:'Mitra', route:'#/portal/seller'},
     {icon:'🏦', label:'Metode Pembayaran', route:'#/portal/pembayaran'},
@@ -1654,7 +1840,7 @@ function StaffSidebar(u){
   const items = navItemsStaff();
   return `
   <div class="sidebar">
-    <div class="brand"><div class="brand-mark" style="width:30px;height:30px;font-size:14px;">🐝</div>GLOWNESS</div>
+    <div class="brand">${brandMark(30)}GLOWNESS</div>
     <button class="dash-menu-btn" onclick="toggleDashMenu()" aria-label="Menu">${state.dashMenuOpen?'✕':'☰'}</button>
     ${state.dashMenuOpen?`<div class="dash-sidebar-backdrop" onclick="closeDashMenu()"></div>`:''}
     <div class="sidebar-nav ${state.dashMenuOpen?'open':''}">
@@ -1662,6 +1848,7 @@ function StaffSidebar(u){
       <div class="nav-label">Menu</div>
       ${items.map(it=>`<a class="nav-item ${state.route===it.route?'active':''}" href="${it.route}" onclick="closeDashMenu()"><span class="ic">${it.icon}</span>${it.label}${it.badge?`<span class="nav-badge">${it.badge}</span>`:''}</a>`).join('')}
       <div class="sidebar-foot">
+        <div class="sidebar-theme">${themeToggleBtn()}<span style="font-size:12.5px;color:var(--text-dim);">Tema ${state.theme==='light'?'Terang':'Gelap'}</span></div>
         <a class="nav-item" href="#/beranda" onclick="closeDashMenu()"><span class="ic">🏬</span>Lihat Toko</a>
         <a class="nav-item" onclick="doLogout()"><span class="ic">🚪</span>Keluar</a>
       </div>
@@ -2380,6 +2567,7 @@ function renderStaffPortal(){
     case '#/portal/keuangan': content = pageStaffKeuangan(); break;
     case '#/portal/penarikan': content = pageStaffPenarikan(); break;
     case '#/portal/pengaturan': content = pageStaffPengaturan(); break;
+    case '#/portal/chat': content = pageStaffChat(); break;
     default: content = pageStaffDashboard();
   }
   return `<div class="dash-wrap">${StaffSidebar(u)}<div class="dash-main">${content}</div></div>${PortalFormModals()}${Toast()}`;
@@ -2391,7 +2579,7 @@ function renderStaffPortal(){
 function Toast(){ return state.toast ? `<div class="toast"><span class="dotg"></span>${state.toast}</div>` : ''; }
 
 function renderPublicPage(inner){
-  return `${Nav()}${inner}${Foot()}${ProductModal()}${CartDrawer()}${CheckoutModal()}${PaymentInfoModal()}${AuthModal()}${Toast()}`;
+  return `${Nav()}${inner}${Foot()}${ProductModal()}${CartDrawer()}${CheckoutModal()}${PaymentInfoModal()}${AuthModal()}${ChatWidget()}${Toast()}`;
 }
 
 function render(){
