@@ -1419,6 +1419,15 @@ function chatAvatarLetter(name){
   const n = (name||'?').trim();
   return (n[0]||'?').toUpperCase();
 }
+function chatUserById(uid){
+  return (state.users||[]).find(x=>x.id===uid) || null;
+}
+function chatAvatarHtml(uid, name, cls){
+  const u = uid ? chatUserById(uid) : null;
+  const c = cls || 'dm-avatar';
+  if(u && u.avatar) return `<div class="${c}"><img src="${u.avatar}" alt="${esc(u.name||name||'')}"></div>`;
+  return `<div class="${c}">${chatAvatarLetter(u?u.name:name)}</div>`;
+}
 function chatTimeShort(iso){
   if(!iso) return '';
   const d = new Date(iso);
@@ -1433,7 +1442,7 @@ function chatTimeMsg(iso){
   if(!iso) return '';
   return new Date(iso).toLocaleString('id-ID',{hour:'2-digit',minute:'2-digit'});
 }
-function chatBubbleHtml(msgs, perspective){
+function chatBubbleHtml(msgs, perspective, threadUserId){
   /* perspective: 'user' = member view (user bubbles on right), 'admin' = admin view (admin on right) */
   if(!msgs || !msgs.length) return `<div class="chat-empty"><div class="chat-empty-icon">💬</div><div>Belum ada pesan.<br>Mulai percakapan di bawah.</div></div>`;
   let html = '';
@@ -1451,8 +1460,13 @@ function chatBubbleHtml(msgs, perspective){
       body += `<div class="chat-imgs"><a href="${m.image}" target="_blank" rel="noopener"><img src="${m.image}" alt="lampiran"></a></div>`;
     }
     if(m.text) body += `<div class="chat-text">${esc(m.text)}</div>`;
+    let av = '';
+    if(!isMe){
+      if(m.from==='admin') av = `<div class="chat-av admin-av">${brandMark(28)}</div>`;
+      else av = chatAvatarHtml(threadUserId || m.userId, m.name, 'chat-av');
+    }
     html += `<div class="chat-row-msg ${isMe?'me':'them'}">
-      ${!isMe?`<div class="chat-av">${m.from==='admin'?'A':chatAvatarLetter(m.name||'')}</div>`:''}
+      ${av}
       <div class="chat-bubble ${isMe?'me':'them'}">
         ${body}
         <div class="chat-meta">${time}${isMe?' · You':''}</div>
@@ -1465,9 +1479,14 @@ function chatComposeHtml(fromRole){
   return `
   <div class="chat-compose dm-compose">
     <div class="chat-compose-bar">
-      <label class="chat-tool" title="Kirim foto"><input type="file" accept="image/*" class="hide" onchange="attachChatImage(this,'${fromRole}')">📷</label>
-      <input id="chat-input" class="chat-input-main" placeholder="Write a message" value="${esc(state.chatDraft||'')}" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMessage(this.value,'${fromRole}');}">
-      <button class="chat-send-btn" onclick="sendChatMessage(document.getElementById('chat-input').value,'${fromRole}')" aria-label="Kirim">➤</button>
+      <label class="chat-tool chat-tool-icon" title="Kirim foto" aria-label="Kirim foto">
+        <input type="file" accept="image/*" class="hide" onchange="attachChatImage(this,'${fromRole}')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+      </label>
+      <input id="chat-input" class="chat-input-main" placeholder="Tulis pesan..." value="${esc(state.chatDraft||'')}" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMessage(this.value,'${fromRole}');}">
+      <button class="chat-send-btn" onclick="sendChatMessage(document.getElementById('chat-input').value,'${fromRole}')" aria-label="Kirim">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </button>
     </div>
   </div>`;
 }
@@ -1490,7 +1509,7 @@ function ChatWidget(){
   const t = (state.chats||[]).find(c=>c.userId===uid);
   const unread = t ? (t.messages||[]).filter(m=>m.from==='admin' && !m.read).length : 0;
   if(!state.chatOpen){
-    return `<button class="chat-fab" onclick="openChatWidget()" aria-label="Chat Admin">💬${unread?`<span class="chat-fab-badge">${unread}</span>`:''}</button>`;
+    return `<button class="chat-fab" onclick="openChatWidget()" aria-label="Chat Admin"><svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.2L4 17.2V4h16v12z"/></svg>${unread?`<span class="chat-fab-badge">${unread}</span>`:''}</button>`;
   }
   const guest = !(u && u.role==='member');
   return `
@@ -1502,7 +1521,7 @@ function ChatWidget(){
       </div>
       <button class="x-btn" onclick="closeChatWidget()" aria-label="Tutup">✕</button>
     </div>
-    <div class="chat-msgs dm-msgs" id="chat-msgs">${chatBubbleHtml(t?t.messages:[], 'user')}</div>
+    <div class="chat-msgs dm-msgs" id="chat-msgs">${chatBubbleHtml(t?t.messages:[], 'user', uid)}</div>
     ${guest?`<div class="chat-guest-bar"><input id="chat-guest-name" placeholder="Namamu (opsional)" value="${esc(t&&t.userName!=='Pengunjung'?t.userName:'')}"></div>`:''}
     ${chatComposeHtml('user')}
   </div>`;
@@ -1519,7 +1538,7 @@ function pageAkunChat(u){
           <div><b>Admin GLOWNESS</b><small class="online-dot">● Online · Chat Admin</small></div>
         </div>
       </div>
-      <div class="chat-msgs dm-msgs" id="chat-msgs">${chatBubbleHtml(t.messages, 'user')}</div>
+      <div class="chat-msgs dm-msgs" id="chat-msgs">${chatBubbleHtml(t.messages, 'user', u.id)}</div>
       ${chatComposeHtml('user')}
     </div>
   </div>`;
@@ -1537,19 +1556,19 @@ function pageStaffChat(){
         <div class="dm-side-top">
           <div class="dm-side-title">Messages</div>
           <div class="dm-search-wrap">
-            <span class="dm-search-ic">🔍</span>
-            <input class="dm-search" placeholder="Find a dm" value="${esc(state.chatSearch||'')}" oninput="state.chatSearch=this.value;render()">
+            <span class="dm-search-ic" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
+            <input class="dm-search" placeholder="Cari percakapan..." value="${esc(state.chatSearch||'')}" oninput="state.chatSearch=this.value;render()">
           </div>
         </div>
         <div class="dm-side-list">
-          <div class="dm-section-label">Messages</div>
+          <div class="dm-section-label">Pesan</div>
           ${filtered.length===0?`<div class="chat-empty" style="padding:24px 12px;">Belum ada percakapan.</div>`:
             filtered.map(t=>{
               const last = (t.messages||[])[(t.messages||[]).length-1];
               const unread = (t.messages||[]).filter(m=>m.from==='user'&&!m.read).length;
-              const preview = last ? (last.image?'📷 Foto':(last.text||'—')) : '—';
+              const preview = last ? (last.image?'Foto':(last.text||'—')) : '—';
               return `<button class="dm-item ${active&&active.id===t.id?'active':''}" onclick="selectAdminChat('${t.id}')">
-                <div class="dm-avatar">${chatAvatarLetter(t.userName)}</div>
+                ${chatAvatarHtml(t.userId, t.userName, 'dm-avatar')}
                 <div class="dm-item-body">
                   <div class="dm-item-top"><b>${esc(t.userName||'Pengunjung')}</b><span>${chatTimeShort(t.updatedAt)}</span></div>
                   <div class="dm-item-preview">${unread?`<em>baru:</em> `:''}${esc(preview)}</div>
@@ -1560,14 +1579,14 @@ function pageStaffChat(){
         </div>
       </aside>
       <section class="dm-main">
-        ${!active?`<div class="chat-empty"><div class="chat-empty-icon">👈</div><div>Pilih percakapan di kiri.</div></div>`:`
+        ${!active?`<div class="chat-empty"><div class="chat-empty-icon">💬</div><div>Pilih percakapan di kiri.</div></div>`:`
           <div class="chat-head dm-head">
             <div class="chat-head-info">
-              <div class="dm-avatar">${chatAvatarLetter(active.userName)}</div>
+              ${chatAvatarHtml(active.userId, active.userName, 'dm-avatar')}
               <div><b>${esc(active.userName||'Pengunjung')}</b><small>${esc(active.userId)}</small></div>
             </div>
           </div>
-          <div class="chat-msgs dm-msgs" id="chat-msgs">${chatBubbleHtml(active.messages, 'admin')}</div>
+          <div class="chat-msgs dm-msgs" id="chat-msgs">${chatBubbleHtml(active.messages, 'admin', active.userId)}</div>
           ${chatComposeHtml('admin')}
         `}
       </section>
@@ -2071,7 +2090,7 @@ function pageStaffPengguna(){
       <td><span class="badge ${u.role==='owner'?'badge-gold':u.role==='admin'?'badge-copper':u.role==='member'?'badge-green':'badge-grey'}">${u.role}</span></td>
       <td>${u.role==='member'?'Kode: '+u.refCode+' · '+fmtRp(u.totalSpend||0)+' belanja · Saldo '+fmtRp(Math.max(sellerBalance(u.id),0)):'—'}</td>
       <td style="min-width:260px;max-width:360px;white-space:normal;">${userAddrHtml(u)}</td>
-      <td class="row-actions">${u.role==='member'?`<button class="icon-btn" style="color:var(--red);" onclick="openBalanceForm('${u.id}','kurang')" title="Kurangi saldo">−Rp</button>`:''}<button class="icon-btn" onclick="openUserForm('${u.id}')">✎</button><button class="icon-btn danger" onclick="deleteUser('${u.id}')">🗑</button></td>
+      <td class="row-actions"><button class="icon-btn" onclick="openUserForm('${u.id}')">✎</button><button class="icon-btn danger" onclick="deleteUser('${u.id}')">🗑</button></td>
     </tr>`).join('')}
   </tbody></table></div></div>`;
 }
@@ -2098,20 +2117,20 @@ function submitUserForm(e){
 function pageStaffSeller(){
   const sellers = state.users.filter(u=>u.role==='member');
   return `
-  <div class="pg-head"><div><h1>Mitra</h1><p>Overview performa referral tiap pengguna. Kode referral bisa diubah langsung di sini.</p></div></div>
+  <div class="pg-head"><div><h1>Mitra</h1><p>Overview performa referral. Atur komisi pending & saldo mitra di sini.</p></div></div>
   <div class="panel"><div class="table-scroll"><table><thead><tr><th>Mitra</th><th>Kode Referral</th><th>Upline</th><th>Jaringan</th><th>Order</th><th>Komisi Pending</th><th>Saldo</th><th></th></tr></thead><tbody>
     ${sellers.map(s=>{
       const os = ordersForSeller(s.refCode);
       const pend = sellerPending(s), bal = sellerBalance(s.id);
-      return `<tr><td><b>${s.name}</b></td>
+      return `<tr><td style="display:flex;align-items:center;gap:10px;"><span class="av" style="width:32px;height:32px;border-radius:50%;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--gold),var(--copper));font-size:12px;font-weight:700;color:#fff;flex-shrink:0;">${avatarHtml(s)}</span><b>${esc(s.name)}</b></td>
         <td><div style="display:flex;gap:6px;align-items:center;">
           <input id="ref-inp-${s.id}" value="${s.refCode}" style="width:120px;background:var(--card);border:1px solid var(--border-strong);color:var(--text);padding:7px 9px;border-radius:8px;font-size:12.5px;text-transform:uppercase;">
           <button class="icon-btn" onclick="updateSellerRefCode('${s.id}')" title="Simpan kode referral">💾</button>
         </div></td>
         <td>${(state.users.find(x=>x.id===s.parentId)||{}).name||'—'}</td><td>${downlineCount(s.id)}</td><td>${os.length}</td>
-        <td>${fmtRp(pend)}${sellerPendingAdjustment(s.id)?`<div class="field-hint" style="margin:0;">koreksi ${sellerPendingAdjustment(s.id)<0?'-':'+'}${fmtRp(Math.abs(sellerPendingAdjustment(s.id)))}</div>`:''}</td>
+        <td><b style="color:var(--gold-2)">${fmtRp(pend)}</b>${sellerPendingAdjustment(s.id)?`<div class="field-hint" style="margin:0;">koreksi ${sellerPendingAdjustment(s.id)<0?'-':'+'}${fmtRp(Math.abs(sellerPendingAdjustment(s.id)))}</div>`:''}<div style="margin-top:6px;"><button class="btn btn-soft btn-sm" onclick="openPendingForm('${s.id}')">Atur Pending</button></div></td>
         <td><b>${fmtRp(bal)}</b></td>
-        <td class="row-actions"><button class="btn btn-soft btn-sm" onclick="openBalanceForm('${s.id}')" title="Isi saldo mitra">+ Isi Saldo</button><button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="openBalanceForm('${s.id}','kurang')" title="Kurangi saldo mitra">− Kurangi</button><button class="icon-btn" onclick="openPendingForm('${s.id}')" title="Ubah komisi pending">✎ Pending</button><button class="icon-btn" onclick="openUserForm('${s.id}')" title="Edit lengkap">✎</button></td></tr>`;
+        <td class="row-actions"><button class="btn btn-soft btn-sm" onclick="openBalanceForm('${s.id}')" title="Isi saldo mitra">+ Isi Saldo</button><button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="openBalanceForm('${s.id}','kurang')" title="Kurangi saldo mitra">− Kurangi</button><button class="icon-btn" onclick="openUserForm('${s.id}')" title="Edit lengkap">✎</button></td></tr>`;
     }).join('')}
   </tbody></table></div></div>
   <div class="panel" style="margin-top:22px;">
@@ -2144,14 +2163,15 @@ function submitPendingForm(e){
   const seller = state.users.find(x=>x.id===sellerId);
   if(!seller) return;
   const target = Math.round(Number(document.getElementById('pf-target').value));
-  const note = document.getElementById('pf-note').value.trim();
-  if(isNaN(target) || target < 0){ toast('Isi nominal komisi pending yang valid'); return; }
+  const note = document.getElementById('pf-note').value.trim() || 'Penyesuaian manual admin';
+  if(isNaN(target) || target < 0){ toast('Isi nominal komisi pending yang valid (≥ 0)'); return; }
   const current = sellerPending(seller);
   const delta = target - current;
   if(delta===0){ toast('Nilai sama dengan komisi pending saat ini'); state.formModal=null; render(); return; }
+  state.pendingLogs = state.pendingLogs || [];
   state.pendingLogs.unshift({id:'p'+Date.now(), sellerId, amount:delta, note, date:new Date().toISOString().slice(0,10), by:staff.name});
   persist(); state.formModal=null; render();
-  toast('Komisi pending '+seller.name+' diubah menjadi '+fmtRp(target));
+  toast('Komisi pending '+seller.name+' diatur ke '+fmtRp(target));
 }
 function openBalanceForm(id, mode){ state.formModal={type:'balance', sellerId:id, mode: mode==='kurang'?'kurang':'tambah'}; render(); }
 function submitBalanceForm(e){
@@ -2570,13 +2590,23 @@ function PortalFormModals(){
     const m = state.users.find(x=>x.id===state.formModal.sellerId);
     if(!m) return '';
     const curr = sellerPending(m);
+    const auto = sellerCommissionTotal(m) - sellerCredited(m.id);
     return `<div class="overlay" onclick="if(event.target===this) closeFormModal()"><div class="modal">
-      <div class="modal-top"><h3>Ubah Komisi Pending</h3><button class="x-btn" onclick="closeFormModal()">✕</button></div>
+      <div class="modal-top"><h3>Atur Komisi Pending</h3><button class="x-btn" onclick="closeFormModal()">✕</button></div>
       <form onsubmit="submitPendingForm(event)">
         <div class="fake-stat"><div class="l">Mitra</div><div class="v">${esc(m.name)}</div></div>
-        <div class="fake-stat"><div class="l">Komisi pending saat ini</div><div class="v">${fmtRp(curr)}</div></div>
-        <div class="field" style="margin-top:14px;"><label>Komisi Pending Baru (Rp)</label><input id="pf-target" type="number" min="0" step="1" required value="${curr}"><div class="field-hint">Masukkan nominal komisi pending yang seharusnya. Selisih dengan nilai saat ini akan tercatat sebagai koreksi.</div></div>
-        <div class="field"><label>Catatan (opsional)</label><input id="pf-note" placeholder="Contoh: Koreksi order #1024"></div>
+        <div class="fake-stat"><div class="l">Pending saat ini</div><div class="v" style="color:var(--gold-2)">${fmtRp(curr)}</div></div>
+        <div class="fake-stat"><div class="l">Hitungan otomatis (order − saldo masuk)</div><div class="v">${fmtRp(Math.max(auto,0))}</div></div>
+        <div class="field" style="margin-top:14px;"><label>Set Komisi Pending (Rp)</label>
+          <input id="pf-target" type="number" min="0" step="1000" required value="${curr}" style="font-size:18px;font-weight:700;">
+          <div class="field-hint">Admin bebas mengatur nominal berapa pun (≥ 0). Nilai ini langsung tampil di dashboard mitra. Semua perubahan tercatat di riwayat koreksi.</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('pf-target').value=0">Set 0</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('pf-target').value=${Math.max(auto,0)}">Pakai hitungan otomatis</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('pf-target').value=${curr}">Kembali ke saat ini</button>
+        </div>
+        <div class="field"><label>Catatan</label><input id="pf-note" placeholder="Contoh: Bonus manual / koreksi order #1024"></div>
         <button class="btn btn-primary btn-block" type="submit">Simpan Komisi Pending</button>
       </form></div></div>`;
   }
