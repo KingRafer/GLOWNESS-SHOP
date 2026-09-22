@@ -113,7 +113,7 @@ let state = {
   formModal:null,
   products:[], orders:[], users:[], withdrawals:[], balanceLogs:[], pendingLogs:[], settings:SEED_SETTINGS,
   notifications:[], announcement:null, announceDismissed:false,
-  chats:[], chatOpen:false, chatActiveId:null, chatDraft:'',
+  chats:[], chatOpen:false, chatActiveId:null, chatDraft:'', chatSearch:'',
   loaded:false,
   regTemp:{},       // temp holder for registration wizard values across steps
   theme: localStorage.getItem('glowness_theme') || 'dark',
@@ -1368,9 +1368,9 @@ function markChatRead(thread, asRole){
   });
   if(changed) persist();
 }
-function sendChatMessage(text, from){
+function sendChatMessage(text, from, imageData){
   text = (text||'').trim();
-  if(!text) return;
+  if(!text && !imageData) return;
   const u = currentUser();
   let uid, name;
   if(from==='admin'){
@@ -1378,7 +1378,7 @@ function sendChatMessage(text, from){
     if(!active){ toast('Pilih percakapan dulu'); return; }
     const t = (state.chats||[]).find(c=>c.id===active || c.userId===active);
     if(!t){ toast('Percakapan tidak ditemukan'); return; }
-    t.messages.push({id:'m'+Date.now(), from:'admin', text, at:new Date().toISOString(), read:false});
+    t.messages.push({id:'m'+Date.now(), from:'admin', text, image:imageData||null, at:new Date().toISOString(), read:false, name:u?u.name:'Admin'});
     t.updatedAt = new Date().toISOString();
     state.chatDraft = '';
     persist(); render();
@@ -1393,7 +1393,7 @@ function sendChatMessage(text, from){
   }
   const t = getOrCreateThread(uid, name);
   t.userName = name;
-  t.messages.push({id:'m'+Date.now(), from:'user', text, at:new Date().toISOString(), read:false});
+  t.messages.push({id:'m'+Date.now(), from:'user', text, image:imageData||null, at:new Date().toISOString(), read:false, name});
   t.updatedAt = new Date().toISOString();
   state.chatDraft = '';
   persist(); render();
@@ -1415,13 +1415,73 @@ function selectAdminChat(id){
   render();
   setTimeout(()=>{ const el=document.getElementById('chat-msgs'); if(el) el.scrollTop=el.scrollHeight; }, 50);
 }
-function chatBubbleHtml(msgs){
-  if(!msgs || !msgs.length) return `<div class="chat-empty">Belum ada pesan. Tulis pertanyaanmu, admin akan membalas di sini.</div>`;
-  return msgs.map(m=>{
-    const mine = m.from==='user';
-    const time = m.at ? new Date(m.at).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
-    return `<div class="chat-bubble ${mine?'me':'them'}"><div class="chat-text">${esc(m.text)}</div><div class="chat-meta">${m.from==='admin'?'Admin · ':''}${time}</div></div>`;
-  }).join('');
+function chatAvatarLetter(name){
+  const n = (name||'?').trim();
+  return (n[0]||'?').toUpperCase();
+}
+function chatTimeShort(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  const now = new Date();
+  const diff = (now-d)/1000;
+  if(diff < 60) return 'baru saja';
+  if(diff < 3600) return Math.floor(diff/60)+'m';
+  if(diff < 86400) return Math.floor(diff/3600)+'j';
+  return d.toLocaleDateString('id-ID',{day:'2-digit',month:'short'});
+}
+function chatTimeMsg(iso){
+  if(!iso) return '';
+  return new Date(iso).toLocaleString('id-ID',{hour:'2-digit',minute:'2-digit'});
+}
+function chatBubbleHtml(msgs, perspective){
+  /* perspective: 'user' = member view (user bubbles on right), 'admin' = admin view (admin on right) */
+  if(!msgs || !msgs.length) return `<div class="chat-empty"><div class="chat-empty-icon">💬</div><div>Belum ada pesan.<br>Mulai percakapan di bawah.</div></div>`;
+  let html = '';
+  let lastDay = '';
+  msgs.forEach(m=>{
+    const day = m.at ? new Date(m.at).toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long'}) : '';
+    if(day && day!==lastDay){
+      html += `<div class="chat-day"><span>${esc(day)}</span></div>`;
+      lastDay = day;
+    }
+    const isMe = perspective==='admin' ? (m.from==='admin') : (m.from==='user');
+    const time = chatTimeMsg(m.at);
+    let body = '';
+    if(m.image){
+      body += `<div class="chat-imgs"><a href="${m.image}" target="_blank" rel="noopener"><img src="${m.image}" alt="lampiran"></a></div>`;
+    }
+    if(m.text) body += `<div class="chat-text">${esc(m.text)}</div>`;
+    html += `<div class="chat-row-msg ${isMe?'me':'them'}">
+      ${!isMe?`<div class="chat-av">${m.from==='admin'?'A':chatAvatarLetter(m.name||'')}</div>`:''}
+      <div class="chat-bubble ${isMe?'me':'them'}">
+        ${body}
+        <div class="chat-meta">${time}${isMe?' · You':''}</div>
+      </div>
+    </div>`;
+  });
+  return html;
+}
+function chatComposeHtml(fromRole){
+  return `
+  <div class="chat-compose dm-compose">
+    <div class="chat-compose-bar">
+      <label class="chat-tool" title="Kirim foto"><input type="file" accept="image/*" class="hide" onchange="attachChatImage(this,'${fromRole}')">📷</label>
+      <input id="chat-input" class="chat-input-main" placeholder="Write a message" value="${esc(state.chatDraft||'')}" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMessage(this.value,'${fromRole}');}">
+      <button class="chat-send-btn" onclick="sendChatMessage(document.getElementById('chat-input').value,'${fromRole}')" aria-label="Kirim">➤</button>
+    </div>
+  </div>`;
+}
+function attachChatImage(input, fromRole){
+  const f = input.files && input.files[0];
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    shrinkImage(reader.result, 900, (small)=>{
+      sendChatMessage('', fromRole, small);
+    });
+  };
+  reader.readAsDataURL(f);
+  input.value = '';
 }
 function ChatWidget(){
   const u = currentUser();
@@ -1434,33 +1494,33 @@ function ChatWidget(){
   }
   const guest = !(u && u.role==='member');
   return `
-  <div class="chat-widget">
-    <div class="chat-head">
-      <div class="chat-head-info">${brandMark(28)}<div><b>Chat Admin</b><small>GLOWNESS SHOP · Online</small></div></div>
+  <div class="chat-widget dm-shell">
+    <div class="chat-head dm-head">
+      <div class="chat-head-info">
+        <div class="dm-avatar admin">${brandMark(36)}</div>
+        <div><b>Admin GLOWNESS</b><small class="online-dot">● Online</small></div>
+      </div>
       <button class="x-btn" onclick="closeChatWidget()" aria-label="Tutup">✕</button>
     </div>
-    <div class="chat-msgs" id="chat-msgs">${chatBubbleHtml(t?t.messages:[])}</div>
-    <div class="chat-compose">
-      ${guest?`<input id="chat-guest-name" class="chat-name-input" placeholder="Namamu (opsional)" value="${esc(t?t.userName:'')}">`:''}
-      <div class="chat-row">
-        <input id="chat-input" placeholder="Tulis pesan..." value="${esc(state.chatDraft)}" onkeydown="if(event.key==='Enter'){event.preventDefault();sendChatMessage(this.value,'user');}">
-        <button class="btn btn-primary btn-sm" onclick="sendChatMessage(document.getElementById('chat-input').value,'user')">Kirim</button>
-      </div>
-    </div>
+    <div class="chat-msgs dm-msgs" id="chat-msgs">${chatBubbleHtml(t?t.messages:[], 'user')}</div>
+    ${guest?`<div class="chat-guest-bar"><input id="chat-guest-name" placeholder="Namamu (opsional)" value="${esc(t&&t.userName!=='Pengunjung'?t.userName:'')}"></div>`:''}
+    ${chatComposeHtml('user')}
   </div>`;
 }
 function pageAkunChat(u){
   const t = getOrCreateThread(u.id, u.name);
   markChatRead(t, 'user');
   return `
-  <div class="pg-head"><div><h1>Chat Admin</h1><p>Tanya langsung ke admin GLOWNESS SHOP.</p></div></div>
-  <div class="panel chat-panel">
-    <div class="chat-msgs chat-msgs-tall" id="chat-msgs">${chatBubbleHtml(t.messages)}</div>
-    <div class="chat-compose">
-      <div class="chat-row">
-        <input id="chat-input" placeholder="Tulis pesan..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendChatMessage(this.value,'user');}">
-        <button class="btn btn-primary btn-sm" onclick="sendChatMessage(document.getElementById('chat-input').value,'user')">Kirim</button>
+  <div class="dm-page">
+    <div class="dm-shell dm-full">
+      <div class="chat-head dm-head">
+        <div class="chat-head-info">
+          <div class="dm-avatar admin">${brandMark(40)}</div>
+          <div><b>Admin GLOWNESS</b><small class="online-dot">● Online · Chat Admin</small></div>
+        </div>
       </div>
+      <div class="chat-msgs dm-msgs" id="chat-msgs">${chatBubbleHtml(t.messages, 'user')}</div>
+      ${chatComposeHtml('user')}
     </div>
   </div>`;
 }
@@ -1468,30 +1528,49 @@ function pageStaffChat(){
   const threads = (state.chats||[]).slice().sort((a,b)=>new Date(b.updatedAt||0)-new Date(a.updatedAt||0));
   let active = threads.find(c=>c.id===state.chatActiveId || c.userId===state.chatActiveId);
   if(!active && threads[0]){ active = threads[0]; state.chatActiveId = active.id; markChatRead(active,'admin'); }
+  const q = (state.chatSearch||'').toLowerCase();
+  const filtered = q ? threads.filter(t=>(t.userName||'').toLowerCase().includes(q)||(t.userId||'').toLowerCase().includes(q)) : threads;
   return `
-  <div class="pg-head"><div><h1>Chat</h1><p>Balas pesan dari pembeli & mitra.</p></div></div>
-  <div class="chat-admin">
-    <div class="chat-list">
-      ${threads.length===0?`<div class="empty-state"><div class="em">💬</div>Belum ada percakapan.</div>`:
-        threads.map(t=>{
-          const last = (t.messages||[])[(t.messages||[]).length-1];
-          const unread = (t.messages||[]).filter(m=>m.from==='user'&&!m.read).length;
-          return `<button class="chat-list-item ${active&&active.id===t.id?'active':''}" onclick="selectAdminChat('${t.id}')">
-            <div class="cli-top"><b>${esc(t.userName||'Pengunjung')}</b>${unread?`<span class="nav-badge">${unread}</span>`:''}</div>
-            <div class="cli-preview">${last?esc(last.text):'—'}</div>
-          </button>`;
-        }).join('')}
-    </div>
-    <div class="chat-panel panel" style="margin:0;">
-      ${!active?`<div class="empty-state"><div class="em">👈</div>Pilih percakapan.</div>`:`
-        <div class="chat-panel-head"><b>${esc(active.userName)}</b><small>${esc(active.userId)}</small></div>
-        <div class="chat-msgs chat-msgs-tall" id="chat-msgs">${chatBubbleHtml(active.messages)}</div>
-        <div class="chat-compose">
-          <div class="chat-row">
-            <input id="chat-input" placeholder="Balas sebagai admin..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendChatMessage(this.value,'admin');}">
-            <button class="btn btn-primary btn-sm" onclick="sendChatMessage(document.getElementById('chat-input').value,'admin')">Kirim</button>
+  <div class="dm-page dm-admin-page">
+    <div class="dm-shell dm-full dm-admin">
+      <aside class="dm-sidebar">
+        <div class="dm-side-top">
+          <div class="dm-side-title">Messages</div>
+          <div class="dm-search-wrap">
+            <span class="dm-search-ic">🔍</span>
+            <input class="dm-search" placeholder="Find a dm" value="${esc(state.chatSearch||'')}" oninput="state.chatSearch=this.value;render()">
           </div>
-        </div>`}
+        </div>
+        <div class="dm-side-list">
+          <div class="dm-section-label">Messages</div>
+          ${filtered.length===0?`<div class="chat-empty" style="padding:24px 12px;">Belum ada percakapan.</div>`:
+            filtered.map(t=>{
+              const last = (t.messages||[])[(t.messages||[]).length-1];
+              const unread = (t.messages||[]).filter(m=>m.from==='user'&&!m.read).length;
+              const preview = last ? (last.image?'📷 Foto':(last.text||'—')) : '—';
+              return `<button class="dm-item ${active&&active.id===t.id?'active':''}" onclick="selectAdminChat('${t.id}')">
+                <div class="dm-avatar">${chatAvatarLetter(t.userName)}</div>
+                <div class="dm-item-body">
+                  <div class="dm-item-top"><b>${esc(t.userName||'Pengunjung')}</b><span>${chatTimeShort(t.updatedAt)}</span></div>
+                  <div class="dm-item-preview">${unread?`<em>baru:</em> `:''}${esc(preview)}</div>
+                </div>
+                ${unread?`<span class="dm-unread">${unread}</span>`:''}
+              </button>`;
+            }).join('')}
+        </div>
+      </aside>
+      <section class="dm-main">
+        ${!active?`<div class="chat-empty"><div class="chat-empty-icon">👈</div><div>Pilih percakapan di kiri.</div></div>`:`
+          <div class="chat-head dm-head">
+            <div class="chat-head-info">
+              <div class="dm-avatar">${chatAvatarLetter(active.userName)}</div>
+              <div><b>${esc(active.userName||'Pengunjung')}</b><small>${esc(active.userId)}</small></div>
+            </div>
+          </div>
+          <div class="chat-msgs dm-msgs" id="chat-msgs">${chatBubbleHtml(active.messages, 'admin')}</div>
+          ${chatComposeHtml('admin')}
+        `}
+      </section>
     </div>
   </div>`;
 }
