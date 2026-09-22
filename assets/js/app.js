@@ -2424,7 +2424,44 @@ function render(){
     html = renderPublicPage(`${Hero()}${Why()}${ProdukSection()}`);
   }
   document.getElementById('app').innerHTML = html;
+  requestAnimationFrame(initReveal);
 }
+
+/* Lightweight scroll-reveal (IntersectionObserver, no lib) */
+function initReveal(){
+  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const els = document.querySelectorAll('.section-head, .why-card, .reseller-cta > div, .stat-card, .panel, .pkg-card');
+  if(!els.length) return;
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        e.target.classList.add('in');
+        io.unobserve(e.target);
+      }
+    });
+  },{threshold:0.12, rootMargin:'0px 0px -40px 0px'});
+  els.forEach((el,i)=>{
+    el.classList.add('reveal');
+    if(i % 4 === 1) el.classList.add('reveal-delay-1');
+    else if(i % 4 === 2) el.classList.add('reveal-delay-2');
+    else if(i % 4 === 3) el.classList.add('reveal-delay-3');
+    io.observe(el);
+  });
+}
+
+/* Nav shadow on scroll */
+(function(){
+  let ticking = false;
+  window.addEventListener('scroll', ()=>{
+    if(ticking) return;
+    ticking = true;
+    requestAnimationFrame(()=>{
+      const nav = document.querySelector('.cnav');
+      if(nav) nav.classList.toggle('scrolled', window.scrollY > 8);
+      ticking = false;
+    });
+  }, {passive:true});
+})();
 
 state.route = location.hash || '#/beranda';
 initData();
