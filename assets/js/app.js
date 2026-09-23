@@ -246,6 +246,7 @@ async function initData(){
   delete state.settings.tiers;
   delete state.settings.referralCodes;
   state.users.forEach(u=>{ if(u.role==='member'){ if(u.parentId===undefined) u.parentId=null; if(u.sponsorId===undefined) u.sponsorId=null; } });
+  restoreSession();
   state.loaded = true;
   render();
   if(!supaReady){ console.warn('[GLOWNESS SHOP] Belum terhubung ke Supabase — data tidak akan tersimpan permanen. Isi SUPABASE_URL & SUPABASE_ANON_KEY di kode.'); }
@@ -1060,11 +1061,26 @@ function finishRegistration(){
   const user = { id, name:t.name, email:t.email, password:t.password, role:'member', avatar:'', refCode:code, readNotifIds:[], sponsorId: sponsor?sponsor.id:null, parentId, totalSpend:0 };
   state.users.push(user);
   state.currentUser = id;
+  saveSession(id);
   persist();
   state.authModal=null;
   toast('Akun berhasil dibuat! Selamat datang, ' + t.name.split(' ')[0]);
   if(sponsor && parentId!==sponsor.id) setTimeout(()=>toast('Posisi sponsor penuh, kamu ditempatkan otomatis di jaringannya (spillover).'), 2800);
   location.hash = '#/akun';
+}
+function saveSession(uid){
+  try{
+    if(uid) localStorage.setItem('glowness_uid', uid);
+    else localStorage.removeItem('glowness_uid');
+  }catch(e){}
+}
+function restoreSession(){
+  try{
+    const uid = localStorage.getItem('glowness_uid');
+    if(!uid) return;
+    if(state.users.some(u=>u.id===uid)) state.currentUser = uid;
+    else localStorage.removeItem('glowness_uid');
+  }catch(e){}
 }
 function submitLogin(e){
   e.preventDefault();
@@ -1073,12 +1089,18 @@ function submitLogin(e){
   const u = state.users.find(x=>x.email.toLowerCase()===email && x.password===pass);
   if(!u){ toast('Email atau kata sandi salah'); return; }
   state.currentUser = u.id;
+  saveSession(u.id);
   state.authModal=null;
   toast('Berhasil masuk, halo ' + u.name.split(' ')[0]);
   if(u.role==='admin'||u.role==='owner') location.hash='#/portal/dashboard';
   else location.hash='#/akun';
 }
-function doLogout(){ state.currentUser=null; location.hash='#/beranda'; }
+function doLogout(){
+  state.currentUser=null;
+  saveSession(null);
+  location.hash='#/beranda';
+  render();
+}
 
 /* =====================================================
    CUSTOMER ACCOUNT PAGES (#/akun, #/akun/pesanan, #/akun/profil, #/akun/keamanan)
@@ -2198,7 +2220,15 @@ function pageStaffPengguna(){
   </tbody></table></div></div>`;
 }
 function openUserForm(id){ state.formModal={type:'user', id:id||null}; render(); }
-function deleteUser(id){ if(id===state.currentUser){toast('Tidak bisa menghapus akun sendiri');return;} state.users=state.users.filter(u=>u.id!==id); persist(); render(); toast('Pengguna dihapus'); }
+function deleteUser(id){
+  if(id===state.currentUser){ toast('Tidak bisa menghapus akun sendiri'); return; }
+  const u = state.users.find(x=>x.id===id);
+  const label = u ? (u.name || u.email || id) : id;
+  if(!confirm('Yakin ingin menghapus akun?\n\nAkun: '+label+'\n\nTindakan ini tidak bisa dibatalkan.')) return;
+  state.users = state.users.filter(x=>x.id!==id);
+  try{ if(localStorage.getItem('glowness_uid')===id) localStorage.removeItem('glowness_uid'); }catch(e){}
+  persist(); render(); toast('Pengguna dihapus');
+}
 function submitUserForm(e){
   e.preventDefault();
   const id = state.formModal.id;
