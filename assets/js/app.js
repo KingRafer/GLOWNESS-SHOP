@@ -114,6 +114,7 @@ let state = {
   products:[], orders:[], users:[], withdrawals:[], balanceLogs:[], pendingLogs:[], settings:SEED_SETTINGS,
   notifications:[], announcement:null, announceDismissed:false,
   chats:[], chatOpen:false, chatActiveId:null, chatDraft:'', chatSearch:'',
+  userSearch:'', userShowPass:{},
   loaded:false,
   regTemp:{},       // temp holder for registration wizard values across steps
   theme: localStorage.getItem('glowness_theme') || 'dark',
@@ -2137,18 +2138,63 @@ function pageStaffPesanan(){
   <div class="panel">${ordersTableStaff(state.orders)}</div>`;
 }
 
+function toggleUserPass(id){
+  state.userShowPass = state.userShowPass || {};
+  state.userShowPass[id] = !state.userShowPass[id];
+  render();
+}
+function copyUserPass(pass){
+  const v = pass || '';
+  if(!v){ toast('Password kosong'); return; }
+  try{
+    if(navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(v);
+    else {
+      const t = document.createElement('textarea'); t.value=v; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove();
+    }
+    toast('Password disalin');
+  }catch(e){ toast('Password: '+v); }
+}
 function pageStaffPengguna(){
+  const q = (state.userSearch||'').trim().toLowerCase();
+  let list = state.users.slice();
+  if(q){
+    list = list.filter(u=>{
+      const hay = [u.name, u.email, u.role, u.refCode, u.password, u.address].map(x=>(x||'').toString().toLowerCase()).join(' ');
+      const addrs = userAddresses(u).map(a=>[a.label,a.recipient,a.phone,a.street,a.city].join(' ')).join(' ').toLowerCase();
+      return hay.includes(q) || addrs.includes(q);
+    });
+  }
   return `
-  <div class="pg-head"><div><h1>Pengguna</h1><p>Kelola akun staf dan pengguna (member dengan fitur referral & komisi mitra jadi satu).</p></div>
+  <div class="pg-head"><div><h1>Pengguna</h1><p>Kelola akun staf dan pengguna. Cari nama, email, role, kode referral, atau password.</p></div>
     <button class="btn btn-primary" onclick="openUserForm()">+ Tambah Pengguna</button></div>
-  <div class="panel"><div class="table-scroll"><table><thead><tr><th>Nama</th><th>Email</th><th>Role</th><th>Info</th><th>Alamat</th><th></th></tr></thead><tbody>
-    ${state.users.map(u=>`<tr>
-      <td><b>${u.name}</b></td><td>${u.email}</td>
+  <div class="panel">
+    <div class="user-search-bar">
+      <span class="user-search-ic">${typeof ic==='function'?ic('search',16):'🔍'}</span>
+      <input type="search" class="user-search-input" placeholder="Cari pengguna (nama, email, role, kode, password…)" value="${esc(state.userSearch||'')}" oninput="state.userSearch=this.value;render()">
+      ${q?`<button type="button" class="btn btn-ghost btn-sm" onclick="state.userSearch='';render()">Hapus</button>`:''}
+      <span class="user-search-count">${list.length} / ${state.users.length}</span>
+    </div>
+    <div class="table-scroll"><table><thead><tr><th>Nama</th><th>Email</th><th>Password</th><th>Role</th><th>Info</th><th>Alamat</th><th></th></tr></thead><tbody>
+    ${list.length===0?`<tr><td colspan="7"><div class="empty-state"><div class="em">${typeof ic==='function'?ic('user',28):''}</div>Tidak ada pengguna yang cocok${q?` dengan “${esc(state.userSearch)}”`:''}.</div></td></tr>`:
+    list.map(u=>{
+      const show = state.userShowPass && state.userShowPass[u.id];
+      const pass = u.password || '';
+      return `<tr>
+      <td><b>${esc(u.name)}</b></td>
+      <td>${esc(u.email)}</td>
+      <td>
+        <div class="pass-cell">
+          <code class="pass-val">${show ? esc(pass) : '••••••••'}</code>
+          <button type="button" class="icon-btn" title="${show?'Sembunyikan':'Tampilkan'}" onclick="toggleUserPass('${u.id}')">${show?'🙈':'👁️'}</button>
+          <button type="button" class="icon-btn" title="Salin password" onclick="copyUserPass(${JSON.stringify(pass)})">📋</button>
+        </div>
+      </td>
       <td><span class="badge ${u.role==='owner'?'badge-gold':u.role==='admin'?'badge-copper':u.role==='member'?'badge-green':'badge-grey'}">${u.role}</span></td>
-      <td>${u.role==='member'?'Kode: '+u.refCode+' · '+fmtRp(u.totalSpend||0)+' belanja · Saldo '+fmtRp(Math.max(sellerBalance(u.id),0)):'—'}</td>
-      <td style="min-width:260px;max-width:360px;white-space:normal;">${userAddrHtml(u)}</td>
+      <td>${u.role==='member'?'Kode: '+esc(u.refCode||'-')+' · '+fmtRp(u.totalSpend||0)+' belanja · Saldo '+fmtRp(Math.max(sellerBalance(u.id),0)):'—'}</td>
+      <td style="min-width:200px;max-width:320px;white-space:normal;">${userAddrHtml(u)}</td>
       <td class="row-actions"><button class="icon-btn" onclick="openUserForm('${u.id}')">✎</button><button class="icon-btn danger" onclick="deleteUser('${u.id}')">🗑</button></td>
-    </tr>`).join('')}
+    </tr>`;
+    }).join('')}
   </tbody></table></div></div>`;
 }
 function openUserForm(id){ state.formModal={type:'user', id:id||null}; render(); }
@@ -2157,7 +2203,9 @@ function submitUserForm(e){
   e.preventDefault();
   const id = state.formModal.id;
   const role = document.getElementById('uf-role').value;
+  const passEl = document.getElementById('uf-pass');
   const data = { name:document.getElementById('uf-name').value, email:document.getElementById('uf-email').value, role, address:document.getElementById('uf-address').value.trim() };
+  if(passEl && passEl.value.trim()) data.password = passEl.value.trim();
   if(role==='member'){
     const existing = id ? state.users.find(u=>u.id===id) : null;
     data.refCode = document.getElementById('uf-ref').value.toUpperCase() || (existing&&existing.refCode) || 'REF'+Math.floor(Math.random()*900+100);
@@ -2167,7 +2215,7 @@ function submitUserForm(e){
     data.parentId = existing ? existing.parentId : null;
   }
   if(id){ Object.assign(state.users.find(u=>u.id===id), data); }
-  else { state.users.push({id:'u'+Date.now(), password:'ganti123', avatar:'', ...data}); }
+  else { state.users.push({id:'u'+Date.now(), password: data.password || 'ganti123', avatar:'', ...data}); }
   persist(); state.formModal=null; render(); toast('Pengguna disimpan');
 }
 
@@ -2617,12 +2665,18 @@ function PortalFormModals(){
     return `<div class="overlay" onclick="if(event.target===this) closeFormModal()"><div class="modal">
       <div class="modal-top"><h3>${u?'Edit':'Tambah'} Pengguna</h3><button class="x-btn" onclick="closeFormModal()">✕</button></div>
       <form onsubmit="submitUserForm(event)">
-        <div class="field"><label>Nama</label><input id="uf-name" required value="${u?u.name:''}"></div>
-        <div class="field"><label>Email</label><input id="uf-email" required value="${u?u.email:''}"></div>
+        <div class="field"><label>Nama</label><input id="uf-name" required value="${u?esc(u.name):''}"></div>
+        <div class="field"><label>Email</label><input id="uf-email" type="email" required value="${u?esc(u.email):''}"></div>
+        <div class="field"><label>Password ${u?'(isi untuk mengubah)':''}</label>
+          <div class="pw-wrap">
+            <input id="uf-pass" type="text" value="${u?esc(u.password||''):''}" placeholder="${u?'Kosongkan jika tidak diubah':'Password awal'}" ${u?'':'required'} autocomplete="off">
+          </div>
+          <div class="field-hint">Admin dapat melihat & mengubah password pengguna.</div>
+        </div>
         <div class="field"><label>Role</label><select id="uf-role" onchange="document.getElementById('uf-ref-wrap').style.display=this.value==='member'?'block':'none'">
           ${['owner','admin','member'].map(r=>`<option value="${r}" ${u&&u.role===r?'selected':''}>${r==='member'?'member (mitra referral)':r}</option>`).join('')}
         </select></div>
-        <div id="uf-ref-wrap" style="${u&&u.role==='member'?'':'display:none'}"><div class="field"><label>Kode Referral</label><input id="uf-ref" value="${u?u.refCode||'':''}" placeholder="Otomatis jika kosong"></div></div>
+        <div id="uf-ref-wrap" style="${u&&u.role==='member'?'':'display:none'}"><div class="field"><label>Kode Referral</label><input id="uf-ref" value="${u?esc(u.refCode||''):''}" placeholder="Otomatis jika kosong"></div></div>
         <div class="field"><label>Alamat</label><textarea id="uf-address" placeholder="Alamat lengkap pengguna">${u?esc(u.address||''):''}</textarea></div>
         <button class="btn btn-primary btn-block" type="submit">Simpan Pengguna</button>
       </form></div></div>`;
