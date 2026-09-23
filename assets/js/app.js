@@ -14,6 +14,25 @@ const MIDTRANS_CLIENT_KEY = 'GANTI_DENGAN_CLIENT_KEY_MIDTRANS_KAMU';
 const MIDTRANS_ENV = 'sandbox'; // ganti ke 'production' saat sudah live
 
 /* =====================================================
+   EMAILJS — Lupa password (kode lewat email)
+   1. Daftar di https://www.emailjs.com
+   2. Buat Email Service (Gmail / Outlook / dll)
+   3. Buat Template dengan variabel:
+        {{to_email}}  {{to_name}}  {{reset_code}}  {{site_name}}  {{expires_min}}
+   4. Isi tiga konstanta di bawah (dari Account → API Keys & Email Services)
+===================================================== */
+const EMAILJS_PUBLIC_KEY = 'GANTI_EMAILJS_PUBLIC_KEY';
+const EMAILJS_SERVICE_ID = 'GANTI_EMAILJS_SERVICE_ID';
+const EMAILJS_TEMPLATE_ID = 'GANTI_EMAILJS_TEMPLATE_ID';
+const RESET_CODE_TTL_MS = 15 * 60 * 1000; // 15 menit
+const RESET_MAX_ATTEMPTS = 5;
+function emailJsConfigured(){
+  return EMAILJS_PUBLIC_KEY && !EMAILJS_PUBLIC_KEY.startsWith('GANTI')
+    && EMAILJS_SERVICE_ID && !EMAILJS_SERVICE_ID.startsWith('GANTI')
+    && EMAILJS_TEMPLATE_ID && !EMAILJS_TEMPLATE_ID.startsWith('GANTI');
+}
+
+/* =====================================================
    STORAGE (Supabase)
    Isi SUPABASE_URL dan SUPABASE_ANON_KEY dengan nilai dari
    Project Settings > API di dashboard Supabase kamu.
@@ -114,6 +133,7 @@ let state = {
   products:[], orders:[], users:[], withdrawals:[], balanceLogs:[], pendingLogs:[], settings:SEED_SETTINGS,
   notifications:[], announcement:null, announceDismissed:false,
   chats:[], chatOpen:false, chatActiveId:null, chatDraft:'', chatSearch:'',
+  resetCodes:[],
   userSearch:'', userShowPass:{},
   loaded:false,
   regTemp:{},       // temp holder for registration wizard values across steps
@@ -240,6 +260,8 @@ async function initData(){
   state.announcement = await loadShared('oliv_announcement', SEED_ANNOUNCEMENT);
   state.chats = await loadShared('oliv_chats', []);
   if(!Array.isArray(state.chats)) state.chats = [];
+  state.resetCodes = await loadShared('oliv_reset_codes', []);
+  if(!Array.isArray(state.resetCodes)) state.resetCodes = [];
   delete state.settings.packages;
   if(!state.settings.paymentMethods) state.settings.paymentMethods = SEED_PAYMENTS;
   if(!state.settings.matrix) state.settings.matrix = {width:3, depth:5};
@@ -262,6 +284,7 @@ function persist(){
   saveShared('oliv_notifications', state.notifications);
   saveShared('oliv_announcement', state.announcement);
   saveShared('oliv_chats', state.chats);
+  saveShared('oliv_reset_codes', state.resetCodes || []);
 }
 /* ---------- referral capture, escape, copy ---------- */
 (function(){ try{ const r=new URLSearchParams(location.search).get('ref'); if(r) localStorage.setItem('gl_ref', r.trim().toUpperCase()); }catch(e){} })();
@@ -988,16 +1011,52 @@ async function payWithMidtrans(){
    AUTH: LOGIN / REGISTER
 ===================================================== */
 function openAuth(tab){
-  state.authModal = {tab: tab||'login'};
+  state.authModal = {tab: tab||'login', resetEmail:'', resetBusy:false};
   state.regTemp = {};
   render();
 }
 function closeAuth(){ state.authModal=null; render(); }
-function setAuthTab(tab){ state.authModal = {tab}; render(); }
+function setAuthTab(tab){ state.authModal = {tab, resetEmail:(state.authModal&&state.authModal.resetEmail)||'', resetBusy:false}; render(); }
 
 function AuthModal(){
   const a = state.authModal;
   if(!a) return '';
+  if(a.tab==='forgot'){
+    return `
+    <div class="overlay" onclick="if(event.target===this) closeAuth()">
+      <div class="modal">
+        <div class="modal-top"><h3>Lupa Password</h3><button class="x-btn" onclick="closeAuth()">✕</button></div>
+        <p style="color:var(--text-dim);font-size:13.5px;line-height:1.55;margin:0 0 16px;">Masukkan email akunmu. Kami akan mengirim <b>kode 6 digit</b> ke email tersebut (berlaku 15 menit).</p>
+        <form onsubmit="requestResetCode(event)">
+          <div class="field"><label>Email terdaftar</label><input required type="email" id="fp-email" value="${esc(a.resetEmail||'')}" placeholder="nama@email.com"></div>
+          <button class="btn btn-primary btn-block" type="submit" ${a.resetBusy?'disabled':''}>${a.resetBusy?'Mengirim…':'Kirim Kode ke Email'}</button>
+        </form>
+        <div style="text-align:center;margin-top:14px;">
+          <a onclick="setAuthTab('login')" style="font-size:13px;color:var(--gold-2);font-weight:600;cursor:pointer;">← Kembali ke Masuk</a>
+        </div>
+        ${!emailJsConfigured()?`<div class="field-hint" style="margin-top:12px;color:var(--red);">EmailJS belum dikonfigurasi. Isi EMAILJS_* di assets/js/app.js.</div>`:''}
+      </div>
+    </div>`;
+  }
+  if(a.tab==='reset'){
+    return `
+    <div class="overlay" onclick="if(event.target===this) closeAuth()">
+      <div class="modal">
+        <div class="modal-top"><h3>Atur Password Baru</h3><button class="x-btn" onclick="closeAuth()">✕</button></div>
+        <p style="color:var(--text-dim);font-size:13.5px;line-height:1.55;margin:0 0 16px;">Kode telah dikirim ke <b>${esc(a.resetEmail||'')}</b>. Cek inbox / spam, lalu isi form di bawah.</p>
+        <form onsubmit="submitResetPassword(event)">
+          <div class="field"><label>Kode 6 digit</label><input required id="fp-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="Contoh: 482913" style="letter-spacing:.2em;font-size:18px;font-weight:700;text-align:center;"></div>
+          ${pwField('fp-pass','Password baru')}
+          ${pwField('fp-pass2','Ulangi password baru')}
+          <button class="btn btn-primary btn-block" type="submit" ${a.resetBusy?'disabled':''}>${a.resetBusy?'Menyimpan…':'Simpan Password Baru'}</button>
+        </form>
+        <div style="display:flex;justify-content:space-between;gap:12px;margin-top:14px;flex-wrap:wrap;">
+          <a onclick="setAuthTab('forgot')" style="font-size:13px;color:var(--text-dim);cursor:pointer;">Kirim ulang kode</a>
+          <a onclick="setAuthTab('login')" style="font-size:13px;color:var(--gold-2);font-weight:600;cursor:pointer;">Masuk</a>
+        </div>
+      </div>
+    </div>`;
+  }
   if(a.tab==='login'){
     return `
     <div class="overlay" onclick="if(event.target===this) closeAuth()">
@@ -1010,12 +1069,15 @@ function AuthModal(){
         <form onsubmit="submitLogin(event)">
           <div class="field"><label>Email</label><input required type="email" id="lg-email"></div>
           ${pwField('lg-pass','Kata Sandi')}
+          <div style="text-align:right;margin:-6px 0 14px;">
+            <a onclick="setAuthTab('forgot')" style="font-size:13px;color:var(--gold-2);font-weight:600;cursor:pointer;">Lupa password?</a>
+          </div>
           <button class="btn btn-primary btn-block" type="submit">Masuk</button>
         </form>
       </div>
     </div>`;
   }
-  // register: satu langkah — tidak ada pilihan peran, semua akun otomatis jadi mitra referral
+  // register
   return `
   <div class="overlay" onclick="if(event.target===this) closeAuth()">
     <div class="modal">
@@ -1034,6 +1096,117 @@ function AuthModal(){
       </form>
     </div>
   </div>`;
+}
+
+/* ---------- Lupa password + EmailJS ---------- */
+function genResetCode(){
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+function cleanExpiredResetCodes(){
+  const now = Date.now();
+  state.resetCodes = (state.resetCodes||[]).filter(r=>r.expiresAt > now);
+}
+async function sendResetEmail(toEmail, toName, code){
+  if(!emailJsConfigured()){
+    return {ok:false, error:'EmailJS belum dikonfigurasi'};
+  }
+  if(!window.emailjs){
+    return {ok:false, error:'Modul EmailJS belum termuat. Refresh halaman.'};
+  }
+  try{
+    if(EMAILJS_PUBLIC_KEY) window.emailjs.init({publicKey: EMAILJS_PUBLIC_KEY});
+    await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+      to_email: toEmail,
+      to_name: toName || toEmail,
+      reset_code: code,
+      site_name: SITE_NAME,
+      expires_min: String(Math.round(RESET_CODE_TTL_MS/60000)),
+    });
+    return {ok:true};
+  }catch(err){
+    console.error('EmailJS error', err);
+    const msg = (err && (err.text || err.message)) ? (err.text || err.message) : 'Gagal mengirim email';
+    return {ok:false, error:msg};
+  }
+}
+async function requestResetCode(e){
+  e.preventDefault();
+  const email = (document.getElementById('fp-email').value||'').trim().toLowerCase();
+  if(!email){ toast('Isi email dulu'); return; }
+  if(!emailJsConfigured()){ toast('Layanan email belum dikonfigurasi admin'); return; }
+  state.authModal = state.authModal || {};
+  state.authModal.resetBusy = true;
+  state.authModal.resetEmail = email;
+  render();
+  cleanExpiredResetCodes();
+  const user = state.users.find(u=>(u.email||'').toLowerCase()===email);
+  // Selalu tampilkan pesan netral (hindari enumerasi email)
+  if(user){
+    const code = genResetCode();
+    state.resetCodes = (state.resetCodes||[]).filter(r=>r.email!==email);
+    state.resetCodes.push({
+      email,
+      code,
+      attempts:0,
+      expiresAt: Date.now() + RESET_CODE_TTL_MS,
+      createdAt: Date.now(),
+    });
+    saveShared('oliv_reset_codes', state.resetCodes);
+    const sent = await sendResetEmail(email, user.name, code);
+    state.authModal.resetBusy = false;
+    if(!sent.ok){
+      toast('Gagal kirim email: ' + (sent.error||'coba lagi'));
+      render();
+      return;
+    }
+  } else {
+    // delay palsu agar timing mirip
+    await new Promise(r=>setTimeout(r, 600));
+    state.authModal.resetBusy = false;
+  }
+  state.authModal.tab = 'reset';
+  state.authModal.resetEmail = email;
+  render();
+  toast('Jika email terdaftar, kode reset telah dikirim. Cek inbox/spam.');
+}
+async function submitResetPassword(e){
+  e.preventDefault();
+  const email = ((state.authModal&&state.authModal.resetEmail)||'').trim().toLowerCase();
+  const code = (document.getElementById('fp-code').value||'').trim();
+  const p1 = document.getElementById('fp-pass').value;
+  const p2 = document.getElementById('fp-pass2').value;
+  if(!email){ toast('Sesi reset tidak valid. Minta kode lagi.'); setAuthTab('forgot'); return; }
+  if(!/^\d{6}$/.test(code)){ toast('Kode harus 6 digit angka'); return; }
+  if(!p1 || p1.length < 4){ toast('Password minimal 4 karakter'); return; }
+  if(p1 !== p2){ toast('Ulangi password tidak cocok'); return; }
+  cleanExpiredResetCodes();
+  const rec = (state.resetCodes||[]).find(r=>r.email===email);
+  if(!rec){ toast('Kode tidak valid atau sudah kedaluwarsa. Minta kode baru.'); return; }
+  if(rec.expiresAt < Date.now()){
+    state.resetCodes = state.resetCodes.filter(r=>r.email!==email);
+    saveShared('oliv_reset_codes', state.resetCodes);
+    toast('Kode sudah kedaluwarsa. Minta kode baru.');
+    return;
+  }
+  if(rec.attempts >= RESET_MAX_ATTEMPTS){
+    toast('Terlalu banyak percobaan. Minta kode baru.');
+    return;
+  }
+  if(rec.code !== code){
+    rec.attempts = (rec.attempts||0) + 1;
+    saveShared('oliv_reset_codes', state.resetCodes);
+    toast('Kode salah ('+rec.attempts+'/'+RESET_MAX_ATTEMPTS+')');
+    return;
+  }
+  const user = state.users.find(u=>(u.email||'').toLowerCase()===email);
+  if(!user){ toast('Akun tidak ditemukan'); return; }
+  state.authModal.resetBusy = true; render();
+  user.password = p1;
+  state.resetCodes = (state.resetCodes||[]).filter(r=>r.email!==email);
+  persist();
+  state.authModal = {tab:'login'};
+  toast('Password berhasil diubah. Silakan masuk dengan password baru.');
+  render();
 }
 function submitRegistration(e){
   e.preventDefault();
