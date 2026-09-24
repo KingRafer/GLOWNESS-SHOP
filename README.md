@@ -1,5 +1,7 @@
 # GLOWNESS SHOP
 
+**Upgrade:** Full animations • Glassmorphism • Animated mesh background • Spring transitions • Super responsive polish
+
 Toko online + peluang bisnis seller: **belanja di GLOWNESS SHOP, ubah pengeluaran jadi pemasukan.** Fitur: toko, keranjang, checkout multi-pembayaran, akun customer, dashboard seller (kode referral + matrix), dan portal admin.
 
 ## Struktur
