@@ -3006,8 +3006,9 @@ function renderPublicPage(inner){
 }
 
 function render(){
+  const appEl = document.getElementById('app');
   if(!state.loaded){
-    document.getElementById('app').innerHTML = `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;color:var(--text-dimmer);">Memuat ${SITE_NAME}…</div>`;
+    appEl.innerHTML = `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;color:var(--text-dimmer);font-size:15px;gap:10px;"><span class="skeleton" style="width:18px;height:18px;border-radius:50%;display:inline-block;"></span> Memuat ${SITE_NAME}…</div>`;
     return;
   }
   const r = state.route;
@@ -3034,14 +3035,34 @@ function render(){
   } else {
     html = renderPublicPage(`${Hero()}${Why()}${ProdukSection()}`);
   }
-  document.getElementById('app').innerHTML = html;
-  requestAnimationFrame(initReveal);
+  // Smooth page transition
+  if(appEl.classList.contains('fade-out')){
+    appEl.innerHTML = html;
+    requestAnimationFrame(()=>{
+      appEl.classList.remove('fade-out');
+      appEl.classList.add('fade-in');
+      setTimeout(()=>appEl.classList.remove('fade-in'), 280);
+      initReveal();
+    });
+  } else {
+    appEl.classList.add('fade-out');
+    setTimeout(()=>{
+      appEl.innerHTML = html;
+      appEl.classList.remove('fade-out');
+      appEl.classList.add('fade-in');
+      setTimeout(()=>appEl.classList.remove('fade-in'), 280);
+      initReveal();
+    }, 180);
+  }
 }
 
-/* Lightweight scroll-reveal (IntersectionObserver, no lib) */
+/* Enhanced scroll-reveal with more elements & spring feel */
 function initReveal(){
-  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const els = document.querySelectorAll('.section-head, .why-card, .reseller-cta > div, .stat-card, .panel, .pkg-card');
+  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+    document.querySelectorAll('.reveal').forEach(el=>el.classList.add('in'));
+    return;
+  }
+  const els = document.querySelectorAll('.section-head, .why-card, .reseller-cta > div, .stat-card, .panel, .pkg-card, .prod-card, .hero-stats .stat, .role-card, .pay-item');
   if(!els.length) return;
   const io = new IntersectionObserver((entries)=>{
     entries.forEach(e=>{
@@ -3050,12 +3071,15 @@ function initReveal(){
         io.unobserve(e.target);
       }
     });
-  },{threshold:0.12, rootMargin:'0px 0px -40px 0px'});
+  },{threshold:0.08, rootMargin:'0px 0px -30px 0px'});
   els.forEach((el,i)=>{
+    if(el.classList.contains('in')) return;
     el.classList.add('reveal');
-    if(i % 4 === 1) el.classList.add('reveal-delay-1');
-    else if(i % 4 === 2) el.classList.add('reveal-delay-2');
-    else if(i % 4 === 3) el.classList.add('reveal-delay-3');
+    const delay = i % 5;
+    if(delay === 1) el.classList.add('reveal-delay-1');
+    else if(delay === 2) el.classList.add('reveal-delay-2');
+    else if(delay === 3) el.classList.add('reveal-delay-3');
+    else if(delay === 4) el.classList.add('reveal-delay-4');
     io.observe(el);
   });
 }
