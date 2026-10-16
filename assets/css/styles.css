@@ -1415,6 +1415,9 @@ html[data-theme="light"] .chat-compose-bar{background:#f0f1f4;border-color:rgba(
 }
 .demo-code b{display:block;font-size:22px;letter-spacing:.22em;margin-top:4px;}
 .prod-card{content-visibility:auto;contain-intrinsic-size:auto 300px;}
+.prod-card.is-out{opacity:.72;}
+.prod-card.is-out .prod-img-flat{filter:grayscale(.35);}
+.prod-card .btn:disabled{opacity:.55;cursor:not-allowed;}
 
 @media(max-width:980px){
   .cnav,.mobile-menu{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--bg);}
