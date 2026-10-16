@@ -139,11 +139,14 @@ img{max-width:100%;height:auto;display:block;}
   border:1px solid rgba(225,112,85,.3);
 }
 .btn-wa{
-  background:linear-gradient(135deg,#4fb37e,#2f8a5c);
-  color:#0c2015;
+  background:linear-gradient(135deg,#25D366,#128C7E);
+  color:#fff;
   border-radius:999px;
+  font-weight:700;
+  box-shadow:0 8px 20px -8px rgba(37,211,102,.55);
 }
-.btn-wa:hover{box-shadow:0 10px 26px -10px rgba(58,140,105,.5);}
+.btn-wa:hover{filter:brightness(1.06);box-shadow:0 12px 28px -8px rgba(37,211,102,.6);color:#fff;}
+.btn-wa svg{flex-shrink:0;}
 .btn-sm{padding:8px 15px;font-size:13px;}
 .btn-block{width:100%;}
 .btn:disabled{opacity:.45;cursor:not-allowed;transform:none !important;}
