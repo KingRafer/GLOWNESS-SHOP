@@ -321,6 +321,30 @@ img{max-width:100%;height:auto;display:block;}
 .announce-inner b{color:var(--gold-2);}
 .announce-close{margin-left:auto;background:transparent;border:none;color:var(--text-dimmer);font-size:14px;}
 
+/* PWA install bar */
+.install-bar{
+  background:linear-gradient(90deg,rgba(0,206,201,.16),rgba(108,92,231,.14));
+  border-bottom:1px solid var(--border-strong);
+  padding:10px 0;
+  animation:slideDown .4s var(--ease-out);
+}
+.install-inner{
+  display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text);flex-wrap:wrap;
+}
+.install-icon{display:flex;align-items:center;color:var(--gold-2);flex-shrink:0;}
+.install-text{flex:1;min-width:0;}
+.install-text b{color:var(--gold-2);}
+.install-btn{flex-shrink:0;white-space:nowrap;}
+.install-close{
+  margin-left:4px;background:transparent;border:none;color:var(--text-dimmer);
+  font-size:14px;cursor:pointer;padding:4px 6px;line-height:1;
+}
+.install-close:hover{color:var(--text);}
+@media(max-width:520px){
+  .install-text{font-size:12.5px;}
+  .install-inner{gap:8px;}
+}
+
 /* ---------- hero ---------- */
 .hero{
   background:
