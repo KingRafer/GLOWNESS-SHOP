@@ -70,7 +70,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_rFfJMjOVsy0LpSiAmg9JEQ_HbGXLHx6';
 /* Samakan dengan secret Edge Function STORAGE_WRITE_SECRET di Supabase.
    Generate: openssl rand -hex 24
    Kosongkan '' jika Edge Function belum di-deploy (fallback localStorage only write). */
-const STORAGE_WRITE_SECRET = '';
+const STORAGE_WRITE_SECRET = 'zNVqz5c84ASCqyHAAfJjC19gm5GDPj8X';
 let supa = null;
 let supaReady = false;
 try{
