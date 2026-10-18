@@ -3,7 +3,7 @@
 ===================================================== */
 const WHATSAPP_NUMBER = '6281216164898'; // 081216164898
 const SITE_NAME = 'GLOWNESS SHOP';
-const APP_VERSION = '1.3.2';
+const APP_VERSION = '1.3.3';
 
 /* =====================================================
    MIDTRANS CONFIG
@@ -692,6 +692,39 @@ function exportOrdersCsv(){
 }
 function genOrderId(){
   return 'o'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+}
+/** Waktu pesan (ms). Prefer createdAt, lalu parse dari id, lalu date. */
+function orderCreatedAtMs(o){
+  if(!o) return 0;
+  if(o.createdAt){
+    const t = Date.parse(o.createdAt);
+    if(!isNaN(t)) return t;
+  }
+  // id format: o + Date.now().toString(36) + 4 char random
+  if(o.id && typeof o.id==='string' && o.id.charAt(0)==='o' && o.id.length>5){
+    const body = o.id.slice(1);
+    const tsPart = body.slice(0, -4);
+    const n = parseInt(tsPart, 36);
+    if(!isNaN(n) && n > 1e12 && n < 4e12) return n;
+  }
+  if(o.date){
+    const t = Date.parse(o.date);
+    if(!isNaN(t)) return t;
+  }
+  return 0;
+}
+function sortOrdersNewest(list){
+  return (list||[]).slice().sort((a,b)=> orderCreatedAtMs(b) - orderCreatedAtMs(a));
+}
+function fmtOrderTime(o){
+  const ms = orderCreatedAtMs(o);
+  if(!ms) return o && o.date ? o.date : '—';
+  try{
+    return new Date(ms).toLocaleString('id-ID', {
+      day:'2-digit', month:'short', year:'numeric',
+      hour:'2-digit', minute:'2-digit'
+    });
+  }catch(e){ return (o && o.date) || '—'; }
 }
 function _loadLoginFails(){
   try{
@@ -1487,9 +1520,10 @@ function buildOrderObject(name, wa, refInput, paymentMethod, ship){
   const c = checkoutCalc(refInput);
   const member = c.mode==='member' ? c.res.member : null;
   const items = state.cart.map(cc=>({id:cc.id, name:cc.name, qty:cc.qty, unitPrice:cc.price, basePrice: (state.products.find(p=>p.id===cc.id)||{}).basePrice||0}));
+  const nowIso = new Date().toISOString();
   const order = {
     id:genOrderId(), buyerName:name, buyerWa:wa, buyerAddress: ship?addressFull(ship):'', shipping: ship||null, total:c.total, status:'Diproses',
-    date:new Date().toISOString().slice(0,10), refCode: member?member.refCode:null,
+    date:nowIso.slice(0,10), createdAt:nowIso, refCode: member?member.refCode:null,
     items, paymentMethod: paymentMethod||'whatsapp',
     userId: (currentUser()||{}).id || null,
     paymentStatus: paymentMethod==='midtrans' ? undefined : 'Belum Dibayar'
@@ -2151,11 +2185,12 @@ function pageAkunRingkasan(u){
 }
 function myOwnOrders(u){
   if(!u) return [];
-  return (state.orders||[]).filter(o=>{
+  const list = (state.orders||[]).filter(o=>{
     if(o.userId) return String(o.userId)===String(u.id);
     // data lama tanpa userId: cocokkan nama pembeli
     return (o.buyerName||'')===(u.name||'');
   });
+  return sortOrdersNewest(list);
 }
 function pageAkunPesanan(u){
   // Riwayat lengkap: pembeli masih bisa upload/lihat bukti di sini (bukan di ringkasan)
@@ -2681,13 +2716,20 @@ function orderItemsLabel(o){
 }
 function ordersTableSimple(orders, payActions){
   if(!orders || orders.length===0) return `<div class="empty-state"><div class="em">🧾</div>Belum ada pesanan.</div>`;
+  const list = sortOrdersNewest(orders);
   if(!payActions){
-    return `<div class="table-scroll"><table><thead><tr><th>ID</th><th>Produk</th><th>Total</th><th>Status</th></tr></thead><tbody>
-    ${orders.map(o=>`<tr><td>#${esc(String(o.id||''))}</td><td>${orderItemsLabel(o)}</td><td>${fmtRp(o.total||0)}</td><td>${statusBadge(o.status)}</td></tr>`).join('')}
+    return `<div class="table-scroll"><table><thead><tr><th>ID</th><th>Waktu</th><th>Produk</th><th>Total</th><th>Status</th></tr></thead><tbody>
+    ${list.map(o=>`<tr>
+      <td>#${esc(String(o.id||''))}</td>
+      <td style="white-space:nowrap;font-size:12.5px;color:var(--text-dim);">${esc(fmtOrderTime(o))}</td>
+      <td>${orderItemsLabel(o)}</td>
+      <td>${fmtRp(o.total||0)}</td>
+      <td>${statusBadge(o.status)}</td>
+    </tr>`).join('')}
   </tbody></table></div>`;
   }
-  return `<div class="table-scroll"><table><thead><tr><th>ID</th><th>Produk</th><th>Total</th><th>Status</th><th>Pembayaran</th><th>Bukti</th></tr></thead><tbody>
-    ${orders.map(o=>{
+  return `<div class="table-scroll"><table><thead><tr><th>ID</th><th>Waktu</th><th>Produk</th><th>Total</th><th>Status</th><th>Pembayaran</th><th>Bukti</th></tr></thead><tbody>
+    ${list.map(o=>{
       const st = payStatusOf(o);
       const oid = esc(String(o.id||''));
       let act = '';
@@ -2706,7 +2748,15 @@ function ordersTableSimple(orders, payActions){
           </div>`;
         }
       }
-      return `<tr><td>#${oid}</td><td>${orderItemsLabel(o)}</td><td>${fmtRp(o.total||0)}</td><td>${statusBadge(o.status)}</td><td>${payStatusBadge(o)}${st==='Ditolak'&&o.paymentNote?`<div class="field-hint" style="margin-top:4px;">${esc(o.paymentNote)}</div>`:''}</td><td>${act}</td></tr>`;
+      return `<tr>
+        <td>#${oid}</td>
+        <td style="white-space:nowrap;font-size:12.5px;color:var(--text-dim);">${esc(fmtOrderTime(o))}</td>
+        <td>${orderItemsLabel(o)}</td>
+        <td>${fmtRp(o.total||0)}</td>
+        <td>${statusBadge(o.status)}</td>
+        <td>${payStatusBadge(o)}${st==='Ditolak'&&o.paymentNote?`<div class="field-hint" style="margin-top:4px;">${esc(o.paymentNote)}</div>`:''}</td>
+        <td>${act}</td>
+      </tr>`;
     }).join('')}
   </tbody></table></div>`;
 }
@@ -3120,7 +3170,7 @@ function pageStaffDashboard(){
         </div>`).join('')}
     </div>
   </div>
-  <div class="panel"><div class="panel-head"><h3>Pesanan Terbaru</h3></div>${ordersTableStaff(state.orders.slice(0,6))}</div>
+  <div class="panel"><div class="panel-head"><h3>Pesanan Terbaru</h3></div>${ordersTableStaff(sortOrdersNewest(state.orders).slice(0,6))}</div>
   <div class="panel" style="margin-top:18px;">
     <div class="panel-head"><h3>Aktivitas Terbaru</h3><a href="#/portal/audit" style="font-size:13px;color:var(--gold-2);font-weight:600;">Lihat semua →</a></div>
     ${!(state.auditLogs&&state.auditLogs.length)?`<div class="empty-state"><div class="em">🛡️</div>Belum ada jejak. Mulai dari login / ubah data.</div>`:
@@ -3136,12 +3186,17 @@ function pageStaffDashboard(){
 }
 function ordersTableStaff(orders){
   if(!orders || orders.length===0) return `<div class="empty-state"><div class="em">🧾</div>Belum ada pesanan.</div>`;
-  return `<div class="table-scroll"><table><thead><tr><th>ID</th><th>Pembeli</th><th>Produk</th><th>Total</th><th>Pembayaran</th><th>Bukti Bayar</th><th>Referral</th><th>Status</th><th></th></tr></thead><tbody>
-    ${orders.map(o=>{
+  const list = sortOrdersNewest(orders);
+  return `<div class="table-scroll"><table><thead><tr><th>ID</th><th>Waktu</th><th>Pembeli</th><th>Produk</th><th>Total</th><th>Pembayaran</th><th>Bukti Bayar</th><th>Referral</th><th>Status</th><th></th></tr></thead><tbody>
+    ${list.map(o=>{
       const items = Array.isArray(o.items) ? o.items : [];
       const itemsLabel = items.map(i=>esc((i&&i.name)||'?')+' x'+(i&&i.qty||0)).join(', ') || '—';
       return `<tr>
-      <td>#${esc(String(o.id||''))}</td><td>${esc(o.buyerName||'')}${o.buyerAddress?`<div class="field-hint" style="max-width:220px;white-space:normal;">📍 ${esc(o.buyerAddress)}</div>`:''}</td><td>${itemsLabel}</td><td>${fmtRp(o.total||0)}</td>
+      <td>#${esc(String(o.id||''))}</td>
+      <td style="white-space:nowrap;font-size:12.5px;color:var(--text-dim);">${esc(fmtOrderTime(o))}</td>
+      <td>${esc(o.buyerName||'')}${o.buyerAddress?`<div class="field-hint" style="max-width:220px;white-space:normal;">📍 ${esc(o.buyerAddress)}</div>`:''}</td>
+      <td>${itemsLabel}</td>
+      <td>${fmtRp(o.total||0)}</td>
       <td>${esc(o.paymentMethod&&o.paymentMethod!=='whatsapp'?o.paymentMethod:'—')}</td>
       <td>${payStatusBadge(o)}${orderNeedsProof(o)&&o.proofAt?`<div><button class="btn btn-soft btn-sm" style="margin-top:6px;" onclick="openProofView('${esc(String(o.id))}')">${o.paymentStatus==='Menunggu Konfirmasi'?'Tinjau':'Lihat'}</button></div>`:''}</td>
       <td>${o.refCode?`<span class="badge badge-copper">${esc(o.refCode)}</span>`:'<span class="badge badge-grey">—</span>'}</td>
@@ -3269,7 +3324,8 @@ function submitProductForm(e){
 function pageStaffPesanan(){
   const q = (state.orderSearch||'').trim().toLowerCase();
   const stFilter = state.orderStatusFilter || '';
-  let list = (state.orders||[]).slice().reverse();
+  // Terbaru di atas (bukan reverse yang justru menampilkan yang lama dulu)
+  let list = sortOrdersNewest(state.orders);
   if(q){
     list = list.filter(o=>{
       const items = Array.isArray(o.items)?o.items:[];
