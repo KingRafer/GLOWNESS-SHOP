@@ -3,7 +3,7 @@
 ===================================================== */
 const WHATSAPP_NUMBER = '6281216164898'; // 081216164898
 const SITE_NAME = 'GLOWNESS SHOP';
-const APP_VERSION = '1.3.1';
+const APP_VERSION = '1.3.2';
 
 /* =====================================================
    MIDTRANS CONFIG
@@ -2146,14 +2146,22 @@ function pageAkunRingkasan(u){
   </div>
   <div class="panel">
     <div class="panel-head"><h3>Pesanan Terbaru</h3><a onclick="location.hash='#/akun/pesanan'" style="font-size:12.5px;color:var(--gold-2);font-weight:600;">Lihat semua →</a></div>
-    <div class="table-scroll">${ordersTableSimple(recentOrders,true)}</div>
+    <div class="table-scroll">${ordersTableSimple(recentOrders,false)}</div>
   </div>`;
 }
-function myOwnOrders(u){ return state.orders.filter(o=>o.userId ? o.userId===u.id : o.buyerName===u.name); }
+function myOwnOrders(u){
+  if(!u) return [];
+  return (state.orders||[]).filter(o=>{
+    if(o.userId) return String(o.userId)===String(u.id);
+    // data lama tanpa userId: cocokkan nama pembeli
+    return (o.buyerName||'')===(u.name||'');
+  });
+}
 function pageAkunPesanan(u){
+  // Riwayat lengkap: pembeli masih bisa upload/lihat bukti di sini (bukan di ringkasan)
   const myOrders = myOwnOrders(u);
   return `
-  <div class="pg-head"><div><h1>Riwayat Pesanan</h1><p>Semua transaksi yang pernah kamu buat.</p></div></div>
+  <div class="pg-head"><div><h1>Riwayat Pesanan</h1><p>Semua transaksi yang pernah kamu buat. Upload bukti pembayaran bisa dilakukan di sini.</p></div></div>
   <div class="panel">
     <div class="table-scroll">${ordersTableSimple(myOrders,true)}</div>
   </div>`;
