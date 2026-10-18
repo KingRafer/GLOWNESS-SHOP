@@ -3,7 +3,7 @@
 ===================================================== */
 const WHATSAPP_NUMBER = '6281216164898'; // 081216164898
 const SITE_NAME = 'GLOWNESS SHOP';
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.3.1';
 
 /* =====================================================
    MIDTRANS CONFIG
@@ -934,14 +934,23 @@ function compressProofImage(file, cb){
     const img = new Image();
     img.onerror = ()=>cb(null);
     img.onload = ()=>{
-      const MAX = 720;
+      // Lebih agresif: max 640px + quality adaptif agar base64 tidak bengkak
+      // (mengurangi risiko localStorage penuh & gagal push ke cloud)
+      const MAX = 640;
       const r = Math.min(1, MAX/Math.max(img.width,img.height));
       const c = document.createElement('canvas');
       c.width = Math.round(img.width*r); c.height = Math.round(img.height*r);
       const ctx = c.getContext('2d');
       ctx.fillStyle = '#fff'; ctx.fillRect(0,0,c.width,c.height);
       ctx.drawImage(img,0,0,c.width,c.height);
-      cb(c.toDataURL('image/jpeg', 0.62));
+      let quality = 0.55;
+      let data = c.toDataURL('image/jpeg', quality);
+      // Jika masih terlalu besar (> ~180KB base64), turunkan quality lagi
+      while(data.length > 180000 && quality > 0.35){
+        quality -= 0.08;
+        data = c.toDataURL('image/jpeg', quality);
+      }
+      cb(data);
     };
     img.src = reader.result;
   };
@@ -979,14 +988,27 @@ async function submitPaymentProof(orderId){
   state.proofBusy = true; render();
   try{
     const now = new Date().toISOString();
-    await saveShared('oliv_proof_'+orderId, {image:d.image, uploadedAt:now});
+    // WAJIB berhasil simpan foto dulu — jangan set proofAt jika gagal
+    const saveResult = await saveShared('oliv_proof_'+orderId, {image:d.image, uploadedAt:now});
+    if(!saveResult || !saveResult.ok){
+      const msg = (saveResult && saveResult.error==='local_full')
+        ? 'Penyimpanan penuh. Kurangi foto produk/bukti lama, atau coba foto yang lebih kecil.'
+        : 'Gagal menyimpan bukti (jaringan/penyimpanan). Coba lagi dengan foto lebih kecil.';
+      toast(msg);
+      return;
+    }
     state.proofCache[orderId] = {image:d.image, uploadedAt:now};
     const o = await mutateOrder(orderId, (x)=>{
       x.paymentStatus='Menunggu Konfirmasi'; x.proofAt=now; x.paymentNote='';
     });
     if(!o) throw new Error('Pesanan tidak ditemukan');
     state.proofDraft = null;
-    toast('Bukti pembayaran terkirim. Menunggu konfirmasi admin.');
+    // Beri tahu jika cloud gagal (admin di perangkat lain mungkin belum melihat)
+    if(edgeWriteEnabled() && !saveResult.cloud){
+      toast('Bukti tersimpan di perangkat ini. Sinkron cloud gagal — admin perlu refresh / buka dari perangkat yang sama.');
+    } else {
+      toast('Bukti pembayaran terkirim. Menunggu konfirmasi admin.');
+    }
   }catch(err){
     console.error(err);
     toast('Gagal mengirim bukti pembayaran, coba lagi.');
@@ -1009,6 +1031,19 @@ async function openProofView(orderId){
       state.formModal.loading=false; render();
     }
   }
+}
+async function retryLoadProof(orderId){
+  // Paksa reload dari cloud/local (abaikan cache kosong)
+  delete state.proofCache[orderId];
+  if(state.formModal && state.formModal.type==='proofview' && state.formModal.orderId===orderId){
+    state.formModal.loading = true; render();
+  }
+  const pr = await loadProof(orderId);
+  if(state.formModal && state.formModal.type==='proofview' && state.formModal.orderId===orderId){
+    state.formModal.loading = false; render();
+  }
+  if(!pr || !pr.image) toast('Foto masih tidak ditemukan. Minta pembeli kirim ulang bukti.');
+  else toast('Foto berhasil dimuat.');
 }
 function openPayProof(orderId){
   state.proofDraft = null;
@@ -3771,7 +3806,18 @@ function PortalFormModals(){
         ${o.proofAt?`<div><span style="color:var(--text-dimmer);">Dikirim:</span> ${new Date(o.proofAt).toLocaleString('id-ID')}</div>`:''}
         ${st==='Ditolak'&&o.paymentNote?`<div><span style="color:var(--text-dimmer);">Alasan ditolak:</span> ${esc(o.paymentNote)}</div>`:''}
       </div>
-      ${state.formModal.loading?`<div class="empty-state">Memuat foto…</div>`:(pr&&pr.image?`<a href="${pr.image}" target="_blank" rel="noopener"><img class="proof-img" src="${pr.image}" alt="Bukti pembayaran"></a><div class="field-hint" style="margin-top:6px;">Klik foto untuk membuka ukuran penuh.</div>`:`<div class="empty-state">Foto bukti tidak ditemukan.</div>`)}
+      ${state.formModal.loading
+        ? `<div class="empty-state">Memuat foto…</div>`
+        : (pr&&pr.image
+            ? `<a href="${pr.image}" target="_blank" rel="noopener"><img class="proof-img" src="${pr.image}" alt="Bukti pembayaran"></a><div class="field-hint" style="margin-top:6px;">Klik foto untuk membuka ukuran penuh.</div>`
+            : `<div class="empty-state" style="padding:20px 12px;">
+                <div style="font-size:28px;margin-bottom:8px;">📷</div>
+                <div style="font-weight:600;margin-bottom:6px;">Foto bukti tidak ditemukan</div>
+                <div class="field-hint" style="max-width:320px;margin:0 auto 12px;line-height:1.5;">
+                  Data foto hilang (penyimpanan penuh / gagal sinkron cloud). Minta pembeli kirim ulang, atau coba muat ulang.
+                </div>
+                <button class="btn btn-soft btn-sm" onclick="retryLoadProof('${esc(String(o.id))}')">🔄 Coba Muat Ulang</button>
+              </div>`)}
       <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
         ${st!=='Terkonfirmasi'?`<button class="btn btn-leaf" style="flex:1;" onclick="confirmPaymentProof('${o.id}')">✓ Konfirmasi Pembayaran</button>`:''}
         ${st!=='Ditolak'?`<button class="btn btn-danger" style="flex:1;" onclick="rejectPaymentProof('${o.id}')">✕ Tolak</button>`:''}
