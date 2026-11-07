@@ -4,6 +4,8 @@
 const WHATSAPP_NUMBER = '6281216164898'; // 081216164898
 const SITE_NAME = 'GLOWNESS SHOP';
 const APP_VERSION = '1.5.0-fast';
+// Web Push: isi dengan VAPID public key dari Supabase Edge Function secret VAPID_PUBLIC_KEY.
+const ADMIN_PUSH_PUBLIC_KEY = 'GANTI_DENGAN_VAPID_PUBLIC_KEY';
 
 /* =====================================================
    MIDTRANS CONFIG
@@ -1063,6 +1065,74 @@ async function setupAdminDeviceNotifs(){
     }, 35000);
   }
 }
+
+/* =====================================================
+   WEB PUSH ADMIN — notifikasi tetap masuk saat web ditutup
+   Butuh Supabase Edge Function: admin-push + VAPID keys.
+===================================================== */
+const ADMIN_PUSH_ENDPOINT = FUNCTIONS_BASE + '/admin-push';
+function base64UrlToUint8Array(base64String){
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  const output = new Uint8Array(raw.length);
+  for(let i=0;i<raw.length;i++) output[i] = raw.charCodeAt(i);
+  return output;
+}
+async function callAdminPush(action, extra){
+  const res = await fetch(ADMIN_PUSH_ENDPOINT, {
+    method:'POST',
+    headers:{'Content-Type':'application/json', apikey:SUPABASE_ANON_KEY, Authorization:'Bearer '+SUPABASE_ANON_KEY},
+    body:JSON.stringify(Object.assign({action}, extra||{}))
+  });
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.error || ('HTTP '+res.status));
+  return data;
+}
+async function enableAdminPushNotifications(){
+  const u = currentUser();
+  if(!isStaffUser(u)){ toast('Fitur ini hanya untuk admin.'); return; }
+  if(!('serviceWorker' in navigator) || !('PushManager' in window)){
+    toast('Browser ini belum mendukung push notification.'); return;
+  }
+  if(!ADMIN_PUSH_PUBLIC_KEY || ADMIN_PUSH_PUBLIC_KEY.startsWith('GANTI')){
+    toast('VAPID Public Key belum dikonfigurasi.'); return;
+  }
+  try{
+    const permission = await Notification.requestPermission();
+    if(permission!=='granted'){ toast('Izin notifikasi belum diberikan.'); return; }
+    const reg = await navigator.serviceWorker.ready;
+    let subscription = await reg.pushManager.getSubscription();
+    if(!subscription){
+      subscription = await reg.pushManager.subscribe({
+        userVisibleOnly:true,
+        applicationServerKey:base64UrlToUint8Array(ADMIN_PUSH_PUBLIC_KEY)
+      });
+    }
+    await callAdminPush('subscribe', {subscription:subscription.toJSON()});
+    toast('Notifikasi transaksi aktif di perangkat ini.');
+  }catch(e){
+    console.error('Admin push subscribe',e);
+    toast('Gagal mengaktifkan notifikasi: '+(e.message||'periksa konfigurasi'));
+  }
+}
+async function disableAdminPushNotifications(){
+  try{
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if(sub){
+      await callAdminPush('unsubscribe',{endpoint:sub.endpoint});
+      await sub.unsubscribe();
+    }
+    toast('Notifikasi dinonaktifkan di perangkat ini.');
+  }catch(e){ toast('Gagal menonaktifkan notifikasi.'); }
+}
+async function notifyOrderPush(order){
+  if(!order || !order.id || !FUNCTIONS_BASE) return;
+  try{ await callAdminPush('notify-order',{orderId:String(order.id)}); }
+  catch(e){ console.warn('Push order belum aktif:',e.message||e); }
+}
+
 function resolveRefCode(raw){
   const code = (raw||'').trim().toUpperCase();
   if(!code) return {type:'none'};
@@ -1783,7 +1853,7 @@ function submitCheckout(e){
   state.orders.unshift(order);
   if(u && u.role==='member'){ u.totalSpend = (u.totalSpend||0) + c.total; }
   logAudit('order_create', 'Pesanan #'+order.id+' · '+order.buyerName+' · '+fmtRp(order.total), {orderId:order.id, total:order.total, refCode:order.refCode||null, items:(order.items||[]).length});
-  persist();
+  persist().then(()=>notifyOrderPush(order)).catch(()=>{});
   try{ notifyAdminOrder(order); }catch(_){}
   state.cart=[]; state.cartOpen=false;
   state.proofDraft = null;
@@ -1895,7 +1965,7 @@ async function payWithMidtrans(){
 
     state.orders.unshift(order);
     { const cu=currentUser(); if(cu && ga.isNew) addAddressToUser(cu, ga.addr, false); }
-    persist();
+    persist().then(()=>notifyOrderPush(order)).catch(()=>{});
     try{ notifyAdminOrder(order); }catch(_){}
     state.cart=[]; state.cartOpen=false; state.formModal=null; render();
 
@@ -4077,6 +4147,14 @@ function pageStaffPengaturan(){
     <div class="reseller-price-row"><div class="nm">Lebar (posisi per mitra)</div><input type="number" min="1" max="10" id="mx-width" value="${matrixCfg().width}"></div>
     <div class="reseller-price-row"><div class="nm">Kedalaman (jumlah level)</div><input type="number" min="1" max="10" id="mx-depth" value="${matrixCfg().depth}"></div>
     <button class="btn btn-primary" style="margin-top:16px;" onclick="saveMatrix()">Simpan Pengaturan Matrix</button>
+  </div>
+  <div class="panel" style="margin-top:22px;">
+    <div class="panel-head"><h3>Notifikasi Transaksi ke HP</h3></div>
+    <div class="field-hint" style="margin-bottom:12px;">Aktifkan di setiap HP admin yang ingin menerima pemberitahuan pesanan baru, termasuk saat aplikasi ditutup. Pastikan izin notifikasi browser diizinkan.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-primary btn-sm" onclick="enableAdminPushNotifications()">Aktifkan Notifikasi di HP Ini</button>
+      <button class="btn btn-ghost btn-sm" onclick="disableAdminPushNotifications()">Nonaktifkan di HP Ini</button>
+    </div>
   </div>
   <div class="panel" style="margin-top:22px;">
     <div class="panel-head"><h3>Penyimpanan Data</h3></div>
