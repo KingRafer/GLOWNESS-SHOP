@@ -49,27 +49,65 @@ html[data-theme="light"],html[data-theme="light"] body{background:#f7f6fc;color:
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" defer></script>
 <script src="assets/app.js?v=1.5.3-speed" defer></script>
 
-<!-- PWA Service Worker + Install Prompt -->
+<!-- PWA Service Worker + tombol install aplikasi -->
+<style>
+#gl-install-app{position:fixed;z-index:99999;right:16px;bottom:calc(18px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:9px;border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:12px 18px;background:linear-gradient(135deg,#a855f7,#6d28d9);color:#fff;font:700 14px system-ui,sans-serif;box-shadow:0 8px 28px rgba(109,40,217,.38);cursor:pointer;transition:transform .18s ease,opacity .18s ease}
+#gl-install-app:active{transform:scale(.96)}
+#gl-install-app[hidden]{display:none}
+#gl-install-app svg{width:18px;height:18px;flex:none}
+@media(min-width:768px){#gl-install-app{right:24px;bottom:24px}}
+@media(prefers-reduced-motion:reduce){#gl-install-app{transition:none}}
+</style>
+<button id="gl-install-app" type="button" aria-label="Install aplikasi GLOWNESS SHOP" hidden>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5"/><path d="M5 17v3h14v-3"/></svg>
+  <span>Install Aplikasi</span>
+</button>
 <script>
 (function(){
-  if (!('serviceWorker' in navigator)) return;
-
-  window.addEventListener('load', function(){
-    navigator.serviceWorker.register('/sw.js')
-      .then(function(reg){ console.log('[PWA] SW registered', reg.scope); })
-      .catch(function(err){ console.warn('[PWA] SW failed', err); });
-  });
-
   var deferredPrompt = null;
+  var installBtn = document.getElementById('gl-install-app');
+  var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+  function showInstallButton(){
+    if (installBtn && !isStandalone) installBtn.hidden = false;
+  }
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('/sw.js')
+        .then(function(reg){ console.log('[PWA] SW registered', reg.scope); })
+        .catch(function(err){ console.warn('[PWA] SW failed', err); });
+    });
+  }
   window.addEventListener('beforeinstallprompt', function(e){
     e.preventDefault();
     deferredPrompt = e;
-    window.__glownessInstallPrompt = deferredPrompt;
+    window.__glownessInstallPrompt = e;
+    showInstallButton();
+  });
+  if (!isStandalone) showInstallButton();
+
+  if (installBtn) installBtn.addEventListener('click', async function(){
+    if (isStandalone) { installBtn.hidden = true; return; }
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      var choice = await deferredPrompt.userChoice;
+      if (choice && choice.outcome === 'accepted') installBtn.hidden = true;
+      deferredPrompt = null;
+      window.__glownessInstallPrompt = null;
+      return;
+    }
+    if (isIOS) {
+      alert('Untuk memasang GLOWNESS SHOP di iPhone: tekan tombol Bagikan (ikon kotak-panah), pilih “Add to Home Screen” / “Tambahkan ke Layar Utama”, lalu tekan Tambah.');
+    } else {
+      alert('Untuk memasang GLOWNESS SHOP: buka menu browser (⋮), lalu pilih “Install app” atau “Tambahkan ke layar utama”. Jika pilihan belum muncul, buka situs ini di Chrome dan pastikan koneksi internet aktif.');
+    }
   });
 
   window.addEventListener('appinstalled', function(){
     deferredPrompt = null;
     window.__glownessInstallPrompt = null;
+    if (installBtn) installBtn.hidden = true;
   });
 })();
 </script>
