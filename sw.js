@@ -1,10 +1,10 @@
 /* GLOWNESS SHOP Service Worker — PWA offline + notifikasi admin + fast cache */
-const CACHE_NAME = 'glowness-shop-v1.5.0-fast';
+const CACHE_NAME = 'glowness-shop-v1.5.1-push';
 const ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/assets/css/styles.css?v=1.5.0-fast',
+  '/assets/css/styles.css?v=1.5.1-push',
   '/assets/app.js?v=1.5.0-fast',
   '/assets/img/logo-sm.png',
   '/assets/img/icon-192.png',
