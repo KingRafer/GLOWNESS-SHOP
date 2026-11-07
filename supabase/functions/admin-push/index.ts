@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
       const payload = JSON.stringify({
         title: "Pesanan baru — GLOWNESS SHOP",
         body: "Ada transaksi/pesanan baru. Ketuk untuk membuka halaman pesanan admin.",
-        url: "/#/portal/pesanan",
+        url: "#/portal/pesanan",
         tag: "gl-order-" + orderId,
         type: "order",
       });
