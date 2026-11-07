@@ -1717,3 +1717,13 @@ img{content-visibility:auto;}
   .admin-push-actions .btn{width:100%;justify-content:center;min-height:46px}
 }
 @media(min-width:641px) and (max-width:980px){.dash-main{padding:20px 18px}.panel{min-width:0}.table-wrap,.table-responsive{overflow-x:auto}}
+
+/* GLOWNESS speed polish v1.5.3 */
+@media(max-width:640px){
+  html{scroll-behavior:auto}
+  .reveal,.reveal-delay-1,.reveal-delay-2,.reveal-delay-3{transition-duration:.18s!important;animation-duration:.18s!important}
+  .panel,.card,.product-card,.why-card{scroll-margin-top:72px}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
