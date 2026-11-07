@@ -3,7 +3,7 @@
 ===================================================== */
 const WHATSAPP_NUMBER = '6281216164898'; // 081216164898
 const SITE_NAME = 'GLOWNESS SHOP';
-const APP_VERSION = '1.5.2-mobilepush';
+const APP_VERSION = '1.5.3-speed';
 // Web Push: isi dengan VAPID public key dari Supabase Edge Function secret VAPID_PUBLIC_KEY.
 const ADMIN_PUSH_PUBLIC_KEY = 'BN6VzzbOBC7xPr1gR0Nms50YkJ1VOp8F72TFYOrPYGy_v-df28uzqhQQo5KpbUVeaGq6y2EjH2dsZAijGKvSnxM';
 
@@ -525,30 +525,27 @@ async function initData(){
 }
 async function persist(opts){
   opts = opts || {};
-  // Data penting disimpan berurutan agar error lokal/cloud terlihat; sisanya paralel
-  const critical = [
-    ['oliv_products', state.products],
-    ['oliv_orders', state.orders],
-    ['oliv_users', state.users],
-    ['oliv_settings', state.settings],
+  // Tulis semua koleksi secara paralel: localStorage tetap ditulis langsung,
+  // sementara request cloud tidak perlu menunggu koleksi lain selesai.
+  const entries = [
+    ['oliv_products', state.products, !!opts.silent],
+    ['oliv_orders', state.orders, !!opts.silent],
+    ['oliv_users', state.users, !!opts.silent],
+    ['oliv_settings', state.settings, !!opts.silent],
+    ['oliv_withdrawals', state.withdrawals, true],
+    ['oliv_balance_logs', state.balanceLogs, true],
+    ['oliv_pending_logs', state.pendingLogs, true],
+    ['oliv_notifications', state.notifications, true],
+    ['oliv_announcement', state.announcement, true],
+    ['oliv_chats', state.chats, true],
+    ['oliv_reset_codes', state.resetCodes || [], true],
+    ['oliv_audit_logs', state.auditLogs || [], true],
   ];
-  const rest = [
-    ['oliv_withdrawals', state.withdrawals],
-    ['oliv_balance_logs', state.balanceLogs],
-    ['oliv_pending_logs', state.pendingLogs],
-    ['oliv_notifications', state.notifications],
-    ['oliv_announcement', state.announcement],
-    ['oliv_chats', state.chats],
-    ['oliv_reset_codes', state.resetCodes || []],
-    ['oliv_audit_logs', state.auditLogs || []],
-  ];
-  const results = [];
-  for(const [k,v] of critical){
-    try{ results.push(await saveShared(k, v, { silent: opts.silent })); }
-    catch(e){ console.error('persist', k, e); results.push({ok:false, cloud:false, error:String(e)}); }
-  }
-  await Promise.all(rest.map(([k,v])=> saveShared(k, v, { silent:true }).catch(e=>{ console.error('persist', k, e); return {ok:false}; })));
-  return results;
+  const settled = await Promise.all(entries.map(async ([key, value, silent])=>{
+    try{ return await saveShared(key, value, {silent}); }
+    catch(e){ console.error('persist', key, e); return {ok:false, cloud:false, error:String(e)}; }
+  }));
+  return settled.slice(0, 4);
 }
 /** Paksa ambil ulang data (cloud jika aktif, lalu local). */
 async function refreshCloudData(){
@@ -1040,29 +1037,28 @@ async function setupAdminDeviceNotifs(){
     // Poll cloud + scan notif (untuk event dari perangkat mitra lain)
     if(_adminPollTimer) clearInterval(_adminPollTimer);
     _adminPollTimer = setInterval(async function(){
-      if(!isStaffUser(currentUser())) return;
+      if(!isStaffUser(currentUser()) || document.visibilityState!=='visible') return;
       try{
         if(typeof edgeWriteEnabled==='function' && edgeWriteEnabled()){
-          // Soft refresh collections yang relevan tanpa full UI toast
+          // Ambil koleksi bersamaan agar polling tidak menambah waktu tunggu.
           const keys = [
             ['oliv_orders','orders'],
             ['oliv_withdrawals','withdrawals'],
             ['oliv_chats','chats'],
           ];
-          for(const [k, field] of keys){
-            try{
-              const val = await loadShared(k, state[field]||[]);
-              if(val) state[field] = val;
-            }catch(_){}
-          }
+          const before = keys.map(([key, field])=>JSON.stringify(state[field]||[]));
+          const values = await Promise.all(keys.map(([key, field])=>loadShared(key, state[field]||[]).catch(()=>state[field]||[])));
+          let changed = false;
+          values.forEach((value, i)=>{
+            const field = keys[i][1];
+            state[field] = value;
+            if(JSON.stringify(value||[]) !== before[i]) changed = true;
+          });
+          if(changed && typeof render==='function' && String(state.route||'').startsWith('#/portal')) render();
         }
         scanAdminIncomingNotifs();
-        if(typeof render==='function' && document.visibilityState==='visible'){
-          // re-render ringan hanya jika di portal agar badge update
-          if(String(state.route||'').startsWith('#/portal')) render();
-        }
       }catch(e){ console.warn('admin notif poll', e); }
-    }, 35000);
+    }, 45000);
   }
 }
 
