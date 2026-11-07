@@ -1688,3 +1688,32 @@ img{content-visibility:auto;}
   display:flex;justify-content:center;min-height:44px;margin-bottom:4px;
 }
 .google-btn-host iframe{max-width:100% !important;}
+
+/* GLOWNESS mobile usability patch v1.5.2 */
+@media(max-width:640px){
+  html,body{width:100%;max-width:100%;overflow-x:hidden;overscroll-behavior-x:none}
+  #app{width:100%;min-width:0;overflow-x:clip}
+  .wrap,.dash-main,.dash-wrap,.dash-content,.pg-head,.panel,.panel-grid,.panel-grid2,.form-grid{min-width:0;max-width:100%}
+  .dash-main{padding:14px 10px calc(92px + env(safe-area-inset-bottom))!important}
+  .pg-head{gap:10px;align-items:flex-start;flex-wrap:wrap}
+  .pg-head h1{font-size:clamp(20px,6vw,27px);line-height:1.2;overflow-wrap:anywhere}
+  .panel{padding:13px!important;border-radius:14px;margin-left:0;margin-right:0}
+  .panel-head{gap:8px;flex-wrap:wrap}
+  .panel-head h3{font-size:15px;line-height:1.35}
+  .btn,button,.icon-btn,.nav-item{min-height:42px;touch-action:manipulation}
+  input,select,textarea{font-size:16px!important;max-width:100%;min-width:0}
+  .field input,.field select,.field textarea{width:100%;box-sizing:border-box}
+  .table-wrap,.table-responsive,.panel table{display:block;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .table-wrap table,.table-responsive table{min-width:620px}
+  .sidebar{position:sticky;top:0;padding:10px 12px!important;min-height:58px}
+  .dash-main .grid,.dash-main [style*="grid-template-columns"]{min-width:0}
+  .chat-widget.dm-shell{left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));width:auto;max-width:none;height:min(72dvh,620px)}
+  .overlay{padding:10px!important;align-items:flex-end}
+  .modal{width:100%;max-width:100%;max-height:88dvh;overflow:auto;border-radius:18px 18px 12px 12px;padding:16px 13px}
+  .chat-fab{bottom:calc(16px + env(safe-area-inset-bottom))}
+  .mobile-menu{padding-left:14px;padding-right:14px}
+  .admin-push-card{border:1px solid var(--border-strong);background:linear-gradient(145deg,rgba(108,92,231,.13),rgba(108,92,231,.04));border-radius:16px;padding:15px;margin:0 0 16px}
+  .admin-push-actions{display:grid;grid-template-columns:1fr;gap:9px}
+  .admin-push-actions .btn{width:100%;justify-content:center;min-height:46px}
+}
+@media(min-width:641px) and (max-width:980px){.dash-main{padding:20px 18px}.panel{min-width:0}.table-wrap,.table-responsive{overflow-x:auto}}
