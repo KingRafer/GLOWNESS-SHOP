@@ -1,5 +1,5 @@
 /* GLOWNESS SHOP Service Worker — PWA offline + notifikasi admin + fast cache */
-const CACHE_NAME = 'glowness-shop-v1.5.3-speed';
+const CACHE_NAME = 'glowness-shop-v1.5.4-install';
 const ASSETS = [
   '/',
   '/index.html',
