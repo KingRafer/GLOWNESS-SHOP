@@ -3,7 +3,7 @@
 ===================================================== */
 const WHATSAPP_NUMBER = '6281216164898'; // 081216164898
 const SITE_NAME = 'GLOWNESS SHOP';
-const APP_VERSION = '1.5.1-push';
+const APP_VERSION = '1.5.2-mobilepush';
 // Web Push: isi dengan VAPID public key dari Supabase Edge Function secret VAPID_PUBLIC_KEY.
 const ADMIN_PUSH_PUBLIC_KEY = 'BN6VzzbOBC7xPr1gR0Nms50YkJ1VOp8F72TFYOrPYGy_v-df28uzqhQQo5KpbUVeaGq6y2EjH2dsZAijGKvSnxM';
 
@@ -4141,20 +4141,26 @@ function submitWithdrawForm(e){
 function pageStaffPengaturan(){
   return `
   <div class="pg-head"><div><h1>Pengaturan</h1><p>Matrix referral & penyimpanan data.</p></div></div>
+  <section class="admin-push-card" aria-label="Notifikasi transaksi admin">
+    <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;">
+      <div style="width:42px;height:42px;flex:0 0 42px;border-radius:13px;display:grid;place-items:center;background:rgba(108,92,231,.18);font-size:21px;">🔔</div>
+      <div style="min-width:0;flex:1;">
+        <h3 style="margin:0 0 5px;font-size:16px;">Notifikasi Transaksi ke HP</h3>
+        <div class="field-hint">Daftarkan HP ini agar admin menerima pemberitahuan pesanan baru meskipun browser tidak sedang membuka toko.</div>
+      </div>
+    </div>
+    <div class="admin-push-actions">
+      <button class="btn btn-primary" onclick="enableAdminPushNotifications()">🔔 Aktifkan Notifikasi di HP Ini</button>
+      <button class="btn btn-ghost btn-sm" onclick="disableAdminPushNotifications()">Nonaktifkan di HP Ini</button>
+    </div>
+    <div class="field-hint" style="margin-top:10px;">Aktifkan pada setiap perangkat admin. Gunakan Chrome/Edge Android dan izinkan notifikasi saat diminta.</div>
+  </section>
   <div class="panel">
     <div class="panel-head"><h3>Struktur Matrix Referral Mitra</h3></div>
     <div class="field-hint" style="margin-bottom:14px;">Lebar = jumlah posisi langsung per mitra. Kedalaman = jumlah level yang dihitung & ditampilkan. Mitra baru yang posisi sponsornya penuh otomatis ditempatkan di bawah jaringan sponsor (spillover).</div>
     <div class="reseller-price-row"><div class="nm">Lebar (posisi per mitra)</div><input type="number" min="1" max="10" id="mx-width" value="${matrixCfg().width}"></div>
     <div class="reseller-price-row"><div class="nm">Kedalaman (jumlah level)</div><input type="number" min="1" max="10" id="mx-depth" value="${matrixCfg().depth}"></div>
     <button class="btn btn-primary" style="margin-top:16px;" onclick="saveMatrix()">Simpan Pengaturan Matrix</button>
-  </div>
-  <div class="panel" style="margin-top:22px;">
-    <div class="panel-head"><h3>Notifikasi Transaksi ke HP</h3></div>
-    <div class="field-hint" style="margin-bottom:12px;">Aktifkan di setiap HP admin yang ingin menerima pemberitahuan pesanan baru, termasuk saat aplikasi ditutup. Pastikan izin notifikasi browser diizinkan.</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      <button class="btn btn-primary btn-sm" onclick="enableAdminPushNotifications()">Aktifkan Notifikasi di HP Ini</button>
-      <button class="btn btn-ghost btn-sm" onclick="disableAdminPushNotifications()">Nonaktifkan di HP Ini</button>
-    </div>
   </div>
   <div class="panel" style="margin-top:22px;">
     <div class="panel-head"><h3>Penyimpanan Data</h3></div>
