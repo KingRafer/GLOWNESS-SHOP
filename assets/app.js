@@ -5,7 +5,7 @@ const WHATSAPP_NUMBER = '6281216164898'; // 081216164898
 const SITE_NAME = 'GLOWNESS SHOP';
 const APP_VERSION = '1.5.1-push';
 // Web Push: isi dengan VAPID public key dari Supabase Edge Function secret VAPID_PUBLIC_KEY.
-const ADMIN_PUSH_PUBLIC_KEY = 'GANTI_DENGAN_VAPID_PUBLIC_KEY';
+const ADMIN_PUSH_PUBLIC_KEY = 'BN6VzzbOBC7xPr1gR0Nms50YkJ1VOp8F72TFYOrPYGy_v-df28uzqhQQo5KpbUVeaGq6y2EjH2dsZAijGKvSnxM';
 
 /* =====================================================
    MIDTRANS CONFIG
