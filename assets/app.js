@@ -1535,6 +1535,7 @@ function Hero(){
   ];
   return `
   <div class="hero">
+    <span class="hero-orb o1" aria-hidden="true"></span><span class="hero-orb o2" aria-hidden="true"></span>
     <div class="wrap hero-grid">
       <div>
         <div class="kicker">Belanja Cerdas · Produk Pilihan</div>
@@ -1543,6 +1544,9 @@ function Hero(){
         <div class="hero-actions">
           <button class="btn btn-primary" onclick="location.hash='#/produk'">Belanja Sekarang</button>
           <button class="btn btn-ghost" onclick="document.getElementById('produk')?.scrollIntoView({behavior:'smooth'})">Lihat Produk</button>
+        </div>
+        <div class="hero-chips">
+          <span>${ic('shield',14)} Pembayaran aman</span><span>${ic('map',14)} Antar ke alamatmu</span><span>${ic('chat',14)} Chat admin 24/7</span>
         </div>
         <div class="hero-stats">
           ${stats.map(s=>`<div class="stat"><strong>${s.v}</strong><span>${s.l}</span></div>`).join('')}
@@ -1564,6 +1568,44 @@ function Why(){
       <div class="why-card"><div class="em">${ic('shield',28)}</div><h4>Checkout Aman & Cepat</h4><p>Berbagai metode pembayaran, proses pesanan yang jelas, dan konfirmasi langsung lewat WhatsApp.</p></div>
       <div class="why-card"><div class="em">${ic('chat',28)}</div><h4>Siap Membantu</h4><p>Ada pertanyaan? Tim kami siap membantu lewat chat admin atau WhatsApp kapan saja kamu butuh.</p></div>
     </div>
+  </div>`;
+}
+function HowItWorks(){
+  const steps=[
+    ['bag','Pilih produk','Jelajahi katalog dan pilih produk yang kamu suka.'],
+    ['wallet','Bayar mudah','Pilih metode pembayaran yang tersedia, lalu upload bukti bayar.'],
+    ['map','Pesanan diantar','Tetapkan alamat pengiriman dan pantau status pesananmu.'],
+  ];
+  return `
+  <div class="wrap section">
+    <div class="section-head">
+      <div class="kicker">Cara Belanja</div>
+      <h2>Tiga langkah, pesanan beres</h2>
+      <p>Proses sederhana dari pilih produk sampai barang sampai di tanganmu.</p>
+    </div>
+    <div class="steps-row">
+      ${steps.map((st,i)=>`<div class="step-card"><div class="step-num">${i+1}</div><div class="em">${ic(st[0],24)}</div><h4>${st[1]}</h4><p>${st[2]}</p></div>`).join('')}
+    </div>
+  </div>`;
+}
+function Faq(){
+  const qa=[
+    ['Bagaimana cara memesan?','Pilih produk, klik "Beli Sekarang" atau masukkan ke keranjang, tetapkan alamat pengiriman, lalu selesaikan pembayaran.'],
+    ['Metode pembayaran apa saja yang tersedia?','Metode pembayaran diatur oleh admin dan bisa dilihat langsung saat checkout.'],
+    ['Apa itu Peluang Bisnis?','Setelah daftar, kamu mendapat kode referral pribadi. Ajak orang lain bergabung dan bangun jaringan dalam struktur matrix; komisi tercatat di dashboard-mu.'],
+    ['Bagaimana komisi dicairkan?','Komisi tercatat sebagai pending, lalu saldo diisi oleh admin. Setelah itu kamu bisa mengajukan penarikan dana dari dashboard.'],
+    ['Bisa install seperti aplikasi?','Bisa. Klik tombol "Install Aplikasi" di pojok layar untuk memasangnya di HP tanpa App Store / Play Store.'],
+  ];
+  return `
+  <div class="wrap section">
+    <div class="section-head">
+      <div class="kicker">FAQ</div>
+      <h2>Pertanyaan yang sering diajukan</h2>
+    </div>
+    <div class="faq-list">
+      ${qa.map(x=>`<details class="faq-item"><summary>${x[0]}</summary><p>${x[1]}</p></details>`).join('')}
+    </div>
+    <div class="faq-cta">Masih ada pertanyaan? <a class="btn btn-wa btn-sm" href="https://wa.me/${WHATSAPP_NUMBER}" target="_blank" rel="noopener">Chat WhatsApp</a></div>
   </div>`;
 }
 function prodThumb(p){
@@ -1647,9 +1689,25 @@ function SellerCta(){
   </div>`;
 }
 function Foot(){
-  return `<footer><div class="wrap foot-row">
-    <div class="brand" style="font-size:14.5px;">${brandMark(28)}${SITE_NAME}</div>
-    <div class="text-dim">© 2026 ${SITE_NAME}. Tim internal? <a onclick="openAuth('login')" style="color:var(--gold-2);font-weight:600;">Masuk ke Portal →</a></div>
+  return `<footer><div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <div class="brand" style="font-size:15px;">${brandMark(28)}${SITE_NAME}</div>
+        <p class="foot-about">Belanja jadi peluang bisnis. Produk pilihan, checkout mudah, dan jaringan mitra dalam satu platform.</p>
+      </div>
+      <div class="foot-links">
+        <b>Menu</b>
+        <a href="#/beranda">Beranda</a>
+        <a href="#/produk">Produk</a>
+        <a href="#/jadi-seller">Peluang Bisnis</a>
+      </div>
+      <div class="foot-links">
+        <b>Hubungi Kami</b>
+        <a href="https://wa.me/${WHATSAPP_NUMBER}" target="_blank" rel="noopener">WhatsApp</a>
+        <a onclick="openAuth('login')" style="cursor:pointer">Masuk / Portal</a>
+      </div>
+    </div>
+    <div class="foot-copy">© 2026 ${SITE_NAME}. Semua hak dilindungi.</div>
   </div></footer>`;
 }
 
@@ -4490,7 +4548,7 @@ function render(){
   } else if(r==='#/jadi-seller'){
     html = renderPublicPage(SellerCta());
   } else {
-    html = renderPublicPage(`${Hero()}${Why()}${ProdukSection()}`);
+    html = renderPublicPage(`${Hero()}${Why()}${ProdukSection()}${HowItWorks()}${SellerCta()}${Faq()}`);
   }
   root.innerHTML = html;
   // Restore form values without forcing layout thrashing
